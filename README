@@ -7,7 +7,7 @@ Checkit Copyright (C) 2014 Dennis Katsonis
 
 LICENCE INFO
 ------------
-Checkit is free software distributed under the GNU GPL.
+Checkit is free software distributed under the GNU GPL.  See below for copyright for CRC64.
 
 WHAT THIS PROGRAM DOES:
 -----------------------
@@ -67,3 +67,6 @@ TODO:
 * Export/import CRC from extended attribute to hidden file and vice versa.
 * Intergration with file managers.
 
+CRC64 routine.
+
+The checksum routine is the crc-64-jones created by Salvatore Sanfilippo.
