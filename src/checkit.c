@@ -393,7 +393,7 @@ static int proc_file(const char *filename)
 	}
 	
       if (flags & DISPLAY) /* Display CRC64 */
-	printf("Checksum for %s: %02x\n", filename, checksum_file);
+	printf("Checksum for %s: %llx\n", filename, checksum_file);
 	
       if (flags & STORE) /* Calculate and store CRC64 */
 	{
@@ -406,7 +406,7 @@ static int proc_file(const char *filename)
 	  {
 	    processed++;
 	    if (flags & DISPLAY)
-	      printf("Checksum for %s: %02x\n", filename, checksum_file);
+	      printf("Checksum for %s: %llx\n", filename, checksum_file);
 	  }
 	}
 	
