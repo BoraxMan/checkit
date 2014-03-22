@@ -3,7 +3,7 @@
 
 AC_PREREQ([2.69])
 AC_INIT([checkit], [0.1], [dennisk@netspace.net.au])
-AM_INIT_AUTOMAKE(checkit, 0.1)
+AM_INIT_AUTOMAKE()
 AC_OUTPUT(Makefile src/Makefile doc/Makefile man/Makefile)
 AC_CONFIG_SRCDIR([src/checkit.c])
 AC_CONFIG_HEADERS([config.h])
