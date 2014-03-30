@@ -1,40 +1,45 @@
 .\" Manpage for checkit.
 .\" Contact dennisk@netspace.net.au.
-.TH man 8 "21 March 2014" "0.0.1" "checkit man page"
-.SH NAME
+.TH "man" "8" "21 March 2014" "0.1.0" "checkit man page"
+.SH "NAME"
 checkit \- Checkit is a file integrity tool for Linux and Unix systems.
-.SH SYNOPSIS
+.SH "SYNOPSIS"
 checkit [OPTIONS] 
 .I [FILES]
-.SH DESCRIPTION
+.SH "DESCRIPTION"
 Checksum adds additions data assurance capabilities to filesystems which support extended attributes.  Checkit allows you to detect any otherwise undetected data integrity issues or file changes to any file.  By storing a checksum as an extended attribute, checkit provides an easy way to detect any silent data corruption, bit rot or otherwise modified error.
 
-.SH OPTIONS
-.IP -s
+.SH "OPTIONS"
+.IP \-s
 Calcuates and stores the checksum.
-.IP -c
+.IP \-c
 Check file against stored checksum.
-.IP -v
+.IP \-v
 Verbose.  Print more information.
-.IP -p
+.IP \-p
 Display CRC64 checksum.
-.IP -x
+.IP \-x
 Remove stored checksum.  This simply deletes the extended attribute.
-.IP -o
+.IP \-o
 Overwite existing checksum.  By default, checkit does not overwrite an existing checkum.  This option allows you to update the checksum, should the file be deliberately altered).
-.IP -r
+.IP \-r
 Recurse through subdirectories.
-.SH EXAMPLES
-checkit -s -o picture.jpg	;Calculates checksum of picture.jpg and overwrites old CRC64
+.IP\-e
+Export CRC to a hidden file.
+.IP\-i
+Import CRC from a hidden file.
 
-checkit -s -r .			;Processes current directory and all sub-directories and files.
 
-checkit -c -r pictures/         ;Check the enture pictures directory. Checkit will report whether all files are OK or not.
+.SH "EXAMPLES"
+checkit \-s \-o picture.jpg	;Calculates checksum of picture.jpg and overwrites old CRC64
 
-.SH LIMITATION
+checkit \-s \-r .			;Processes current directory and all sub\-directories and files.
+
+checkit \-c \-r pictures/         ;Check the enture pictures directory. Checkit will report whether all files are OK or not.
+.SH "LIMITATION"
 As checkit doesn't repair files, you need to ensure that you have backups of important data.  Checkit stores the CRC in an extended attribute.  This attribute won't be transferred when copying to a filesystem which doesn't support extended attributes, or archived using an archiver which doesn't store them.  Also, when copying, ensure the file manager/copy utility copies attributes.
 
-.SH BUGS
+.SH "BUGS"
 No known bugs.
-.SH AUTHOR
+.SH "AUTHOR"
 Dennis Katsonis (dennisk@netspace.net.au)

@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/vfs.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <attr/attributes.h>
@@ -46,15 +47,22 @@
 #define RECURSE	0b100000
 #define OVERWRITE	0b1000000
 #define PRINT	0b10000000
-#define VERSION "0.0.1"
+#define EXPORT  0b100000000
+#define IMPORT  0b1000000000
+#define VERSION "0.1.0"
 
+#define XATTR 1
+#define HIDDEN_ATTR 2
 
-static int proc_dir(const char *dir);
-static int proc_file(const char *filename);
+#define MAX_FILENAME_LENGTH 512
+
+static int processDir(const char *dir);
+static int processFile(const char *filename);
 unsigned long long FileCRC64(const char *filename);
 uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l);
 void textcolor(int attr, int fg, int bg);
 void print_help(void);
+unsigned long long getCRC(const char *filename);
 
 int flags = 0;
 int processed = 0;
@@ -62,14 +70,9 @@ int failed = 0;
 
 void print_help(void)
 {
-  puts("CHECKIT: A file checksum utility.");
-  puts("(C) Dennis Katsonis (2014)");
-  puts("");
-  puts("CRC64 routine copyright..");
-  puts("Copyright (c) 2012, Salvatore Sanfilippo <antirez at gmail dot com>");
+  printf("CHECKIT: A file checksum utility.\tVersion : %s\n",VERSION);
+  puts("(C) Dennis Katsonis (2014).  CRC64 Copyright (c) 2012, Salvatore Sanfilippo <antirez at gmail dot com>");
   puts("All rights reserved.");
-  puts("");
-  printf("Version : %s\n",VERSION);
   puts("");
   puts("Checkit stores a checksum (CRC64) as an extended attribute.  Using");
   puts("this program you can easily calculate and store a checksum as");
@@ -78,19 +81,54 @@ void print_help(void)
   puts("the file.");
   puts("");
   puts("Usage :");
-  puts(" -s 	Calculate and store checksum");
-  puts(" -c	Check file against stored checksum");
-  puts(" -v	Verbose.  Print more information");
-  puts(" -p	Display CRC64 checksum");
-  puts(" -x	Remove stored CRC64 checksum");
-  puts(" -o	Overwrite existing checksum (by default, checkit will not overwrite an existing checksum)");
-  puts(" -r	Recurse through directories");
-  printf("Version : %s\n",VERSION);
+  puts(" -s  Calculate and store checksum\t-c   Check file against stored checksum");
+  puts(" -v  Verbose.  Print more information\t-p   Display CRC64 checksum");
+  puts(" -x  Remove stored CRC64 checksum\t-o   Overwrite existing checksum");
+  puts(" -r  Recurse through directories");
+  puts(" -e  Export CRC to hidden file\t-i   Import CRC from hidden file");
 }
 
+int fileExists(const char* file) {
+    struct stat buf;
+    return (stat(file, &buf) == 0);
+}
+
+int presentCRC64(const char *file)
+{  /* Check if CRC64 attribute is present. Returns XATTR if xattr, HIDDEN if hidden file. */
+  char buf[4096];
+  char crc_file[MAX_FILENAME_LENGTH] = "\0";
+  
+  attrlist_cursor_t cursor;
+  attrlist_ent_t *attrbufl;
+  int attrcount = 0;
+  
+  cursor.opaque[0] = 0;
+  cursor.opaque[1] = 0;
+  cursor.opaque[2] = 0;
+  cursor.opaque[3] = 0;
+  if (attr_list(file, buf, 4096, 0, &cursor) == 0)
+     if (((attrlist_t *) buf)->al_count)
+      for (attrcount = 0; attrcount < ((attrlist_t *) buf)->al_count; attrcount++)
+      {
+	attrbufl = ATTR_ENTRY(buf, attrcount);
+	if (!strcmp(attrbufl->a_name, "crc64")) /* We've found an existing attribute */
+	{
+	  return XATTR;
+	}
+       }
+      /* No attribute?  Lets look for an existing hidden file. */
+  strcat(crc_file, ".");
+  strncat(crc_file, file, MAX_FILENAME_LENGTH - 8);
+  strcat(crc_file, ".crc64");
+
+  if (fileExists(crc_file))
+    return HIDDEN_ATTR;
+  
+  return 0;    
+}
 
 void textcolor(int attr, int fg, int bg)
-{
+{ /*Change textcolour */
 	char command[13];
 
   	/* Command is the control command to the terminal */
@@ -98,10 +136,111 @@ void textcolor(int attr, int fg, int bg)
 	printf("%s", command);
 } /* end of textcolor() */
 
+int exportCRC(const char *filename)
+{
+  char crc_file[MAX_FILENAME_LENGTH] = "\0";
+  int file_handle;
+  unsigned long long crc64;
+
+  if (presentCRC64(filename) != XATTR)
+    return 1;
+  
+  strcat(crc_file, ".");
+  strncat(crc_file, filename, MAX_FILENAME_LENGTH - 8);
+  strcat(crc_file, ".crc64");
+  
+  if (fileExists(crc_file) & (!(flags & OVERWRITE)))
+    return 1; /* Don't overwrite attribute unless allowed. */
+  
+  if ((file_handle = open(crc_file, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR)) == -1)
+    return 1; 
+  
+  crc64 = getCRC(filename);
+  
+  if (flags & VERBOSE)
+    printf("Exporting to %s\r\n", crc_file);
+
+  write(file_handle, &crc64, sizeof (unsigned long long));
+  close(file_handle);
+  if ((attr_remove(filename, "crc64",0)) == -1)
+  {
+    printf("%s\n",filename);
+    perror("Removing xattr failed");
+  }
+  processed++;
+  return 0;
+}
+  
+int removeCRC(const char *filename)
+{
+  char crc_file[MAX_FILENAME_LENGTH] = "\0";
+  
+  if (presentCRC64(filename) == XATTR)
+  {
+    if ((attr_remove(filename, "crc64",0)) == -1)
+    {
+      perror("Removing xattr failed");
+      return 1;
+    }
+    else
+    {
+      if (flags & VERBOSE)
+	printf("Checksum removed\n");
+    }
+  }
+  if (presentCRC64(filename) == HIDDEN_ATTR)
+  {
+    strcat(crc_file, ".");
+    strncat(crc_file, filename, MAX_FILENAME_LENGTH - 8);
+    strcat(crc_file, ".crc64");
+    unlink(crc_file);
+  }
+  processed++;
+  return 0;
+}
+
+int importCRC(const char *filename)
+{
+  char crc_file[MAX_FILENAME_LENGTH] = "\0";
+  int file_handle;
+  unsigned long long crc64;
+  int ATTRFLAGS;
+      
+  if (flags & OVERWRITE)
+    ATTRFLAGS = 0;
+  else
+    ATTRFLAGS = ATTR_CREATE;
+  
+  if ((presentCRC64(filename) != HIDDEN_ATTR) && (flags & OVERWRITE))
+    return 1;
+  
+  strcat(crc_file, ".");
+  strncat(crc_file, filename, MAX_FILENAME_LENGTH - 8);
+  strcat(crc_file, ".crc64");
+  if (flags & VERBOSE)
+    printf("Importing from %s\r\n", crc_file);
+
+  if ((file_handle = open(crc_file, O_RDONLY)) == -1)
+  {
+    puts("Could not read file");
+    return 1; 
+  }
+  crc64 = getCRC(filename);
+  read(file_handle, &crc64, sizeof (unsigned long long));
+  close(file_handle);
+  if ((attr_set(filename, "crc64", (const char *)&crc64, sizeof(crc64), ATTRFLAGS)) == -1)
+  {
+    printf("%s\n",filename);
+    perror("Setting xattr failed");
+    return 1;
+  }
+  unlink(crc_file);
+  processed++;
+  return 0;
+}
 
 unsigned long long FileCRC64(const char *filename)
-{
-  
+{ /* Open file and calcuate CRC */
   unsigned char buf[MAX_BUF_LEN];
   size_t bufread = MAX_BUF_LEN;
   int cont = 1;
@@ -134,9 +273,8 @@ unsigned long long FileCRC64(const char *filename)
   return temp;
 }
 
-int proc_dir(const char *dir)
-{
-  
+int processDir(const char *dir)
+{ /* Process directory and files within it */
   DIR *dp;
   struct dirent *entry;
   struct stat statbuf;
@@ -157,11 +295,11 @@ int proc_dir(const char *dir)
 	{
 	  if(strcmp(".", entry->d_name) == 0 || strcmp("..", entry->d_name) == 0)
 	     continue;
-	  proc_dir(entry->d_name);
+	  processDir(entry->d_name);
 	}
 	else
 	{
-	  proc_file(entry->d_name);
+	  processFile(entry->d_name);
 	  if (flags & VERBOSE)
 	  {
 	    printf("Processsing file %s.\n",entry->d_name);
@@ -173,25 +311,86 @@ int proc_dir(const char *dir)
   }
 return 0;
 }
-      
-static int proc_file(const char *filename)
-{ 
-  struct stat statbuf;
-  unsigned long long checksum_attr;
-  unsigned long long checksum_file;
-  int attr_len = sizeof(unsigned long long);
-  int file;
-  int ATTRFLAGS;
-  int attrcount = 0;
-  char buf[4096];
-  attrlist_cursor_t cursor;
-  attrlist_ent_t *attrbufl;
 
+int putCRC(const char *file)
+{     
+  unsigned long long checksum_file;
+  char crc_file[MAX_FILENAME_LENGTH] = "\0";
+  int file_handle;
+  int ATTRFLAGS;
+      
   if (flags & OVERWRITE)
     ATTRFLAGS = 0;
   else
     ATTRFLAGS = ATTR_CREATE;
   
+  checksum_file = FileCRC64(file);
+  if ((attr_set(file, "crc64", (const char *)&checksum_file, sizeof(checksum_file), ATTRFLAGS)) == -1)
+  {
+    printf("%s\n",file);
+    perror("Setting xattr failed.");   
+  }
+  else
+  {
+    strcat(crc_file, ".");
+    strncat(crc_file, file, MAX_FILENAME_LENGTH - 8);
+    strcat(crc_file, ".crc64");
+   
+    if ((file_handle = open(crc_file, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR)) == -1)
+      return 1;
+
+    if (write(file_handle, &checksum_file, sizeof (crc64)) == -1)
+      return 1;
+    close(file_handle);
+  }
+  return 0;
+}
+
+unsigned long long getCRC(const char *file)
+{ /* This retreives the CRC, first by checking for an extended attribute
+    then by looking for a hidden file.  Returns 0 if unsuccessful, otherwise return the checksum.*/
+  int attribute_format;
+  unsigned long long checksum_attr;
+  int file_handle;
+  int attr_len = sizeof(unsigned long long);
+  char crc_file[512] = "\0";
+    
+  attribute_format = presentCRC64(file);
+  
+  if (!attribute_format)
+    return 0;
+  
+  if (attribute_format == XATTR)
+  {
+    if ((attr_get(file, "crc64", (char *)&checksum_attr, &attr_len, 0)) == -1)
+    {
+      return 0;
+    }
+    else
+      return checksum_attr;
+  }
+  if (attribute_format == HIDDEN_ATTR)
+  {
+    strcat(crc_file, ".");
+    strncat(crc_file, file, MAX_FILENAME_LENGTH - 8);
+    strcat(crc_file, ".crc64");
+  
+    if ((file_handle = open(crc_file, O_RDONLY)) == -1)
+      if (flags & VERBOSE)
+	printf("Couldn't open file %s.\r\n", file);
+    read(file_handle, &checksum_attr, sizeof(unsigned long long));
+    return checksum_attr;
+  }
+  return 0;
+}
+
+
+static int processFile(const char *filename)
+{
+  struct stat statbuf;
+  unsigned long long checksum_file;
+  int file;
+
   if ((file = stat (filename, &statbuf)) != 0 )
   {
     perror("failed to open file: \n");
@@ -204,107 +403,71 @@ static int proc_file(const char *filename)
     {
       if(flags  & VERBOSE)
 	printf("Checking for existing xattrs in %s\n",filename);
-
-      cursor.opaque[0] = 0;
-      cursor.opaque[1] = 0;
-      cursor.opaque[2] = 0;
-      cursor.opaque[3] = 0;
-      
-      if (attr_list(filename, buf, 4096, 0, &cursor) != 0)
-      {
-	puts("Could not check attributes.");
-	return 1;
-      }
-     if (((attrlist_t *) buf)->al_count)
-     for (attrcount = 0; attrcount < ((attrlist_t *) buf)->al_count; attrcount++)
-      {
-	attrbufl = ATTR_ENTRY(buf, attrcount);
-	if (!strcmp(attrbufl->a_name, "crc64")) /* We've found an existing attribute */
+	if(presentCRC64(filename))
 	{
-	  puts("CRC64 attribute already exists");
-	  return 1;
+	  puts("Cannot overwrite existing CRC.");
+	  return(1);
 	}
-      } /* End for loop */
-    }
-  }
-  
+      } 
+    } /* We've checked there isn't a CRC we can overwrite.  Lets continue. */
 
   if (S_ISREG (statbuf.st_mode))
   {
+    if (flags & REMOVE)
+    {
+      if (removeCRC(filename))
+	return 1;
+    } /* End of Remove CRC routine */
+	
+    if (flags & DISPLAY) /* Display CRC64 */
+      printf("Checksum for %s: %llx\n", filename, getCRC(filename));
+	
+    if (flags & EXPORT) /* Export CRC to file */
+    {
+      if (exportCRC(filename))
+	return 1;
+    } /* End of export routine. */
 
-    if(flags & VERBOSE)
-      printf("Checksumming file %s.\t", filename);
-      checksum_file = FileCRC64(filename);
-
-      if (checksum_file == 0)
-	printf("Could not process file %s or file only contains nulls.\n", filename);
-        if (flags & REMOVE)
-	{
-	  if ((attr_remove(filename, "crc64",0)) == -1)
-	  {
-	    printf("%s\n",filename);
-	    perror("Removing xattr failed");
-	  }
-	  else
-	  {
-	    processed++;
-	    if (flags & VERBOSE)
-	      printf("Checksum removed\n");
-	  }
-	    
-	}
-	
-      if (flags & DISPLAY) /* Display CRC64 */
-	printf("Checksum for %s: %llx\n", filename, checksum_file);
-	
-      if (flags & STORE) /* Calculate and store CRC64 */
-	{
-	  if ((attr_set(filename, "crc64", (const char *)&checksum_file, attr_len, ATTRFLAGS)) == -1)
-	  {
-	    printf("%s\n",filename);
-	    perror("Setting xattr failed");
-	  }
-	  else
-	  {
-	    processed++;
-	    if (flags & DISPLAY)
-	      printf("Checksum for %s: %llx\n", filename, checksum_file);
-	  }
-	}
-	
-	if (flags & CHECK) /* Check CRC */
-	{
-	  if ((attr_get(filename, "crc64", (char *)&checksum_attr, &attr_len, 0)) == -1)
-	  {
-	    printf("%s\n",filename);
-	    perror("Retrieving xattr failed");
-	    return 1;
-	  }
-	  else
-	  {
-	    printf("%s\t[",filename);
-	    if (checksum_attr == checksum_file)	
-	    {
-	      textcolor(BRIGHT,GREEN,BLACK);
-	      printf("  OK  ");
-	      RESET_TEXT();
-	    }
-	    else
-	    {
-	    textcolor(RESET,RED,BLACK);
-	    printf(" FAILED ");
-	    failed++;
-	    RESET_TEXT();
-	    }
-	  processed++;
-	  }
- 
-	printf("]\n");
-	}
-  }
+    if (flags & IMPORT) /* Export CRC to file */
+    {
+      if(importCRC(filename))
+	return 1;
+    } /* End of export routine. */
+    
+    
+    if (flags & STORE) /* Calculate and store CRC64 */
+    {
+      if (putCRC(filename))
+      {
+	printf("Failed to store CRC");
+	return 1;
+      }
+    } /* End of store routine. */
+    
+    if (flags & CHECK) /* Check CRC */
+    {
+      if (FileCRC64(filename) == getCRC(filename))
+      {
+	printf("%s\t[", filename);
+	textcolor(BRIGHT,GREEN,BLACK);
+	printf("  OK  ");
+	RESET_TEXT();
+      }
+      else
+      {
+	printf("%s\t[", filename);
+	textcolor(RESET,RED,BLACK);
+	printf(" FAILED ");
+	failed++;
+	RESET_TEXT();
+      }
+    processed++;
+    printf("]\n");
+    }
+  } /* End of file processing regime */
     
   if (S_ISDIR(statbuf.st_mode) && (flags & RECURSE))
-    if (proc_dir(filename))
+    if (processDir(filename))
       return 1;
   return 0;
 }
@@ -312,10 +475,9 @@ static int proc_file(const char *filename)
 
 int main(int argc, char *argv[])
 {
-
   int optch;
    
-  while ((optch = getopt(argc, argv,"hscvxrop")) != -1)
+  while ((optch = getopt(argc, argv,"hscvexirop")) != -1)
     switch (optch)
     {
       case 'h' :
@@ -340,9 +502,15 @@ int main(int argc, char *argv[])
       case 'r' :
 	flags |= RECURSE;
 	break;
+      case 'i' :
+        flags |= IMPORT;
+	break;
+      case 'e' :
+	flags |= EXPORT;
+	break;
+
       case 'p' :
 	flags |= DISPLAY;
-
 	break;
 	
       case '?' :
@@ -357,24 +525,28 @@ int main(int argc, char *argv[])
     print_help();
     return(0);
   }
-  
- 
     /* Check for conflicting options */
     if ((flags & CHECK) && (flags & STORE))
     {
-      puts("Cannot store and check CRC at same time");
+      puts("Cannot store and check CRC at same time.");
       return 1;
     }
     
    if ((flags & STORE) && (flags & REMOVE))
     {
-      puts("Cannot remove and store CRC at same time");
+      puts("Cannot remove and store CRC at same time.");
       return 1;
     }
     
     if ((flags & CHECK) && (flags & REMOVE))
     {
-      puts("Cannot remove and check CRC at same time");
+      puts("Cannot remove and check CRC at same time.");
+      return 1;
+    }
+    
+    if ((flags & EXPORT) && (flags & IMPORT))
+    {
+      puts("Cannot import and export at the same time.");
       return 1;
     }
     
@@ -384,7 +556,7 @@ int main(int argc, char *argv[])
     {
     do
     {
-      proc_file(argv[optch]);
+      processFile(argv[optch]);
     }
     while ( ++optch < argc);
     }  
@@ -392,7 +564,7 @@ int main(int argc, char *argv[])
   printf("%d file(s) processed.\n", processed);
   if (failed && processed)
     printf("%d file(s) failed.\n", failed);
-  else if (processed)
+  else if (processed && (flags & CHECK))
     printf("All file(s) OK.\n");
   
   return 0;
