@@ -323,6 +323,8 @@ int putCRC(const char *file)
     ATTRFLAGS = 0;
   else
     ATTRFLAGS = ATTR_CREATE;
+  if (flags & VERBOSE)
+    printf("Processing %s : ", file);
   
   checksum_file = FileCRC64(file);
   if ((attr_set(file, "crc64", (const char *)&checksum_file, sizeof(checksum_file), ATTRFLAGS)) == -1)
@@ -343,6 +345,7 @@ int putCRC(const char *file)
       return 1;
     close(file_handle);
   }
+  processed++;
   return 0;
 }
 

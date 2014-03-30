@@ -2,3 +2,4 @@ checkit
 *~
 *.bak
 *.o
+Makefile
