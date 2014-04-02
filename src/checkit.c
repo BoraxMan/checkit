@@ -18,51 +18,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <dirent.h>
+
 #include "crc64.h"
-
-#define MAX_BUF_LEN  (65536)
-#define RESET_TEXT()	printf("\033[0;0m")
-
-#define RESET		0
-#define BRIGHT 		1
-#define DIM		2
-#define UNDERLINE 	3
-#define BLINK		4
-#define REVERSE		7
-#define HIDDEN		8
-
-#define BLACK 		0
-#define RED		1
-#define GREEN		2
-#define YELLOW		3
-#define BLUE		4
-#define MAGENTA		5
-#define CYAN		6
-
-#define VERBOSE 0b1
-#define STORE	0b10
-#define CHECK	0b100
-#define DISPLAY	0b1000
-#define REMOVE	0b10000
-#define RECURSE	0b100000
-#define OVERWRITE	0b1000000
-#define PRINT	0b10000000
-#define EXPORT  0b100000000
-#define IMPORT  0b1000000000
-#define VERSION "0.1.0"
-
-#define XATTR 1
-#define HIDDEN_ATTR 2
-
-#define MAX_FILENAME_LENGTH 512
-
-static int processDir(const char *dir);
-static int processFile(const char *filename);
-unsigned long long FileCRC64(const char *filename);
-uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l);
-void textcolor(int attr, int fg, int bg);
-void print_help(void);
-unsigned long long getCRC(const char *filename);
+#include "checkit.h"
 
 int flags = 0;
 int processed = 0;
@@ -88,15 +46,25 @@ void print_help(void)
   puts(" -e  Export CRC to hidden file\t-i   Import CRC from hidden file");
 }
 
+
+char* hiddenCRCFile(const char *file)
+{
+  static char crc_file[MAX_FILENAME_LENGTH] = "\0";
+
+  strcpy(crc_file, ".");
+  strncat(crc_file, file, MAX_FILENAME_LENGTH - 8);
+  strcat(crc_file, ".crc64");
+  return(crc_file);
+}
+
 int fileExists(const char* file) {
-    struct stat buf;
-    return (stat(file, &buf) == 0);
+  struct stat buf;
+  return (stat(file, &buf) == 0);
 }
 
 int presentCRC64(const char *file)
 {  /* Check if CRC64 attribute is present. Returns XATTR if xattr, HIDDEN if hidden file. */
   char buf[4096];
-  char crc_file[MAX_FILENAME_LENGTH] = "\0";
   
   attrlist_cursor_t cursor;
   attrlist_ent_t *attrbufl;
@@ -117,11 +85,9 @@ int presentCRC64(const char *file)
 	}
        }
       /* No attribute?  Lets look for an existing hidden file. */
-  strcat(crc_file, ".");
-  strncat(crc_file, file, MAX_FILENAME_LENGTH - 8);
-  strcat(crc_file, ".crc64");
 
-  if (fileExists(crc_file))
+
+  if (fileExists(hiddenCRCFile(file)))
     return HIDDEN_ATTR;
   
   return 0;    
@@ -138,30 +104,30 @@ void textcolor(int attr, int fg, int bg)
 
 int exportCRC(const char *filename)
 {
-  char crc_file[MAX_FILENAME_LENGTH] = "\0";
   int file_handle;
-  unsigned long long crc64;
+  t_crc64 crc64;
+
 
   if (presentCRC64(filename) != XATTR)
     return 1;
   
-  strcat(crc_file, ".");
-  strncat(crc_file, filename, MAX_FILENAME_LENGTH - 8);
-  strcat(crc_file, ".crc64");
   
-  if (fileExists(crc_file) & (!(flags & OVERWRITE)))
+  if (fileExists(hiddenCRCFile(filename)) & (!(flags & OVERWRITE)))
+    
     return 1; /* Don't overwrite attribute unless allowed. */
-  
-  if ((file_handle = open(crc_file, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR)) == -1)
+  if ((file_handle = open(hiddenCRCFile(filename), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR)) == -1)
+  {
+
     return 1; 
-  
+  }
   crc64 = getCRC(filename);
   
   if (flags & VERBOSE)
-    printf("Exporting to %s\r\n", crc_file);
+    printf("Exporting to %s\r\n", hiddenCRCFile(filename));
 
-  write(file_handle, &crc64, sizeof (unsigned long long));
+  write(file_handle, &crc64, sizeof (t_crc64));
   close(file_handle);
+
   if ((attr_remove(filename, "crc64",0)) == -1)
   {
     printf("%s\n",filename);
@@ -189,21 +155,16 @@ int removeCRC(const char *filename)
     }
   }
   if (presentCRC64(filename) == HIDDEN_ATTR)
-  {
-    strcat(crc_file, ".");
-    strncat(crc_file, filename, MAX_FILENAME_LENGTH - 8);
-    strcat(crc_file, ".crc64");
-    unlink(crc_file);
-  }
+    unlink(hiddenCRCFile(filename));
+
   processed++;
   return 0;
 }
 
 int importCRC(const char *filename)
 {
-  char crc_file[MAX_FILENAME_LENGTH] = "\0";
   int file_handle;
-  unsigned long long crc64;
+  t_crc64 crc64;
   int ATTRFLAGS;
       
   if (flags & OVERWRITE)
@@ -214,19 +175,17 @@ int importCRC(const char *filename)
   if ((presentCRC64(filename) != HIDDEN_ATTR) && (flags & OVERWRITE))
     return 1;
   
-  strcat(crc_file, ".");
-  strncat(crc_file, filename, MAX_FILENAME_LENGTH - 8);
-  strcat(crc_file, ".crc64");
-  if (flags & VERBOSE)
-    printf("Importing from %s\r\n", crc_file);
 
-  if ((file_handle = open(crc_file, O_RDONLY)) == -1)
+  if (flags & VERBOSE)
+    printf("Importing from %s\r\n", hiddenCRCFile(filename));
+
+  if ((file_handle = open(hiddenCRCFile(filename), O_RDONLY)) == -1)
   {
     puts("Could not read file");
     return 1; 
   }
   crc64 = getCRC(filename);
-  read(file_handle, &crc64, sizeof (unsigned long long));
+  read(file_handle, &crc64, sizeof (t_crc64));
   close(file_handle);
   if ((attr_set(filename, "crc64", (const char *)&crc64, sizeof(crc64), ATTRFLAGS)) == -1)
   {
@@ -234,12 +193,12 @@ int importCRC(const char *filename)
     perror("Setting xattr failed");
     return 1;
   }
-  unlink(crc_file);
+  unlink(hiddenCRCFile(filename));
   processed++;
   return 0;
 }
 
-unsigned long long FileCRC64(const char *filename)
+t_crc64 FileCRC64(const char *filename)
 { /* Open file and calcuate CRC */
   unsigned char buf[MAX_BUF_LEN];
   size_t bufread = MAX_BUF_LEN;
@@ -262,7 +221,7 @@ unsigned long long FileCRC64(const char *filename)
 	puts("Error reading file.");
 	return 0;
       }
-    temp =  (unsigned long long) crc64(temp, buf, (unsigned int)bufread);
+    temp =  (t_crc64) crc64(temp, buf, (unsigned int)bufread);
     tot = tot + bufread;
     if (bufread < MAX_BUF_LEN)
       cont = 0;
@@ -314,8 +273,8 @@ return 0;
 
 int putCRC(const char *file)
 {     
-  unsigned long long checksum_file;
-  char crc_file[MAX_FILENAME_LENGTH] = "\0";
+  t_crc64 checksum_file;
+
   int file_handle;
   int ATTRFLAGS;
       
@@ -323,6 +282,7 @@ int putCRC(const char *file)
     ATTRFLAGS = 0;
   else
     ATTRFLAGS = ATTR_CREATE;
+  
   if (flags & VERBOSE)
     printf("Processing %s : ", file);
   
@@ -334,29 +294,28 @@ int putCRC(const char *file)
   }
   else
   {
-    strcat(crc_file, ".");
-    strncat(crc_file, file, MAX_FILENAME_LENGTH - 8);
-    strcat(crc_file, ".crc64");
-   
-    if ((file_handle = open(crc_file, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR)) == -1)
-      return 1;
-
-    if (write(file_handle, &checksum_file, sizeof (crc64)) == -1)
-      return 1;
-    close(file_handle);
+    processed++;
+    return 0;
   }
+   
+  if ((file_handle = open(hiddenCRCFile(file), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR)) == -1)
+   return 1;
+
+  if (write(file_handle, &checksum_file, sizeof (crc64)) == -1)
+    return 1;
+  close(file_handle);
+
   processed++;
   return 0;
 }
 
-unsigned long long getCRC(const char *file)
+t_crc64 getCRC(const char *file)
 { /* This retreives the CRC, first by checking for an extended attribute
     then by looking for a hidden file.  Returns 0 if unsuccessful, otherwise return the checksum.*/
   int attribute_format;
-  unsigned long long checksum_attr;
+  t_crc64 checksum_attr;
   int file_handle;
-  int attr_len = sizeof(unsigned long long);
-  char crc_file[512] = "\0";
+  int attr_len = sizeof(t_crc64);
     
   attribute_format = presentCRC64(file);
   
@@ -374,14 +333,10 @@ unsigned long long getCRC(const char *file)
   }
   if (attribute_format == HIDDEN_ATTR)
   {
-    strcat(crc_file, ".");
-    strncat(crc_file, file, MAX_FILENAME_LENGTH - 8);
-    strcat(crc_file, ".crc64");
-  
-    if ((file_handle = open(crc_file, O_RDONLY)) == -1)
+    if ((file_handle = open(hiddenCRCFile(file), O_RDONLY)) == -1)
       if (flags & VERBOSE)
 	printf("Couldn't open file %s.\r\n", file);
-    read(file_handle, &checksum_attr, sizeof(unsigned long long));
+    read(file_handle, &checksum_attr, sizeof(t_crc64));
     return checksum_attr;
   }
   return 0;
@@ -391,7 +346,7 @@ unsigned long long getCRC(const char *file)
 static int processFile(const char *filename)
 {
   struct stat statbuf;
-  unsigned long long checksum_file;
+  t_crc64 checksum_file;
   int file;
 
   if ((file = stat (filename, &statbuf)) != 0 )
@@ -451,14 +406,14 @@ static int processFile(const char *filename)
     {
       if (FileCRC64(filename) == getCRC(filename))
       {
-	printf("%s\t[", filename);
+	printf("%-20s\t[", filename);
 	textcolor(BRIGHT,GREEN,BLACK);
 	printf("  OK  ");
 	RESET_TEXT();
       }
       else
       {
-	printf("%s\t[", filename);
+	printf("%-20s\t[", filename);
 	textcolor(RESET,RED,BLACK);
 	printf(" FAILED ");
 	failed++;
