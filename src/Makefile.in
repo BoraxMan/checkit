@@ -90,7 +90,8 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_checkit_OBJECTS = checkit.$(OBJEXT) crc64.$(OBJEXT)
+am_checkit_OBJECTS = checkit.$(OBJEXT) crc64.$(OBJEXT) \
+	vfat_attr.$(OBJEXT) ntfs_attr.$(OBJEXT)
 checkit_OBJECTS = $(am_checkit_OBJECTS)
 checkit_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -237,7 +238,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CFLAGS = -O3 -s
 AM_LDFLAGS = -lattr
-checkit_SOURCES = checkit.c crc64.c
+checkit_SOURCES = checkit.c crc64.c vfat_attr.c ntfs_attr.c
 all: all-am
 
 .SUFFIXES:
@@ -327,6 +328,8 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/checkit.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/crc64.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntfs_attr.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vfat_attr.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
