@@ -4,8 +4,6 @@
 #include <sys/ioctl.h>
 #include <stdio.h>
 #include <linux/msdos_fs.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 
 int vfat_attr(const char *file)
