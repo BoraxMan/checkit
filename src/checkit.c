@@ -13,9 +13,14 @@
 #include <sys/vfs.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <attr/xattr.h>
 #include <attr/attributes.h>
+#include <libgen.h>
+#include <linux/limits.h>
+
 #include <sys/statfs.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #include <errno.h>
 #include <dirent.h>
@@ -33,11 +38,20 @@ int fstype = 0;
 
 static char* hiddenCRCFile(const char *file)
 {
-  static char crc_file[MAX_FILENAME_LENGTH] = "\0";
-
-  strcpy(crc_file, ".");
-  strncat(crc_file, file, MAX_FILENAME_LENGTH - 8);
+  static char crc_file[PATH_MAX - 1] = "\0";
+  char *base_filename;
+  char *dir_filename;
+  char *_filename;
+  _filename = strdup(file);
+  base_filename = basename(_filename);
+  dir_filename = dirname(_filename);  
+ 
+  strcpy(crc_file, dir_filename);
+  strcat(crc_file, "/");
+  strcat(crc_file, ".");
+  strncat(crc_file, base_filename, MAX_FILENAME_LENGTH - 8);
   strcat(crc_file, ".crc64");
+  printf("Hidden file %s\n", crc_file);
   return(crc_file);
 }
 
@@ -53,21 +67,37 @@ int presentCRC64(const char *file)
   attrlist_cursor_t cursor;
   attrlist_ent_t *attrbufl;
   int attrcount = 0;
+  char *current_attr;
+  int x;
   
   cursor.opaque[0] = 0;
   cursor.opaque[1] = 0;
   cursor.opaque[2] = 0;
   cursor.opaque[3] = 0;
 
-  if (attr_list(file, buf, 4096, 0, &cursor) == 0)
+  
+  /* if (attr_list(file, buf, 4096, 0, &cursor) == 0)
      if (((attrlist_t *) buf)->al_count)
       for (attrcount = 0; attrcount < ((attrlist_t *) buf)->al_count; attrcount++)
       {
 	attrbufl = ATTR_ENTRY(buf, attrcount);
-	if (!strcmp(attrbufl->a_name, "crc64")) /* We've found an existing attribute */
+	if (!strcmp(attrbufl->a_name, "crc64")) 
 	  return XATTR;
-      }
+	  }*/
+  
+  x = listxattr(file,buf,4096);
+  current_attr = buf;    
+  if (x != -1)
+  {
+  do {
+    if (strcmp(current_attr, "user.crc64") == 0)
+      return XATTR;
+     else
+      current_attr += (strlen(current_attr) + 1);
+    } while ((current_attr - buf) < x);
+  }
   /* No attribute?  Lets look for an existing hidden file. */
+
 
   if (fileExists(hiddenCRCFile(file)))
     return HIDDEN_ATTR;
@@ -108,8 +138,8 @@ int exportCRC(const char *filename)
   close(file_handle);
 
 
-  if ((attr_remove(filename, "crc64",0)) == -1)
-    fprintf(stderr, "Removing xattr failed on %s: %s\r\n", filename);
+  if ((removexattr(filename, "user.crc64")) == -1)
+    fprintf(stderr, "Removing xattr failed on %s \r\n", filename);
 
   processed++;
   return 0;
@@ -119,7 +149,7 @@ int removeCRC(const char *filename)
 { /* Removes CRC, either the xattr, hidden file, or both */
   if (presentCRC64(filename) == XATTR)
   {
-    if ((attr_remove(filename, "crc64",0)) == -1)
+    if ((removexattr(filename, "user.crc64")) == -1)
     {
       fprintf(stderr, "Removing xattr failed on %s: ", filename);
       perror(NULL);
@@ -166,7 +196,7 @@ int importCRC(const char *filename)
   crc64 = getCRC(filename);
   read(file_handle, &crc64, sizeof (t_crc64));
   close(file_handle);
-  if ((attr_set(filename, "crc64", (const char *)&crc64, sizeof(crc64), ATTRFLAGS)) == -1)
+  if ((setxattr(filename, "user.crc64", (const char *)&crc64, sizeof(crc64), ATTRFLAGS)) == -1)
   {
     fprintf(stderr, "Setting xattr failed on %s: ", filename);
     perror(NULL);
@@ -207,7 +237,7 @@ t_crc64 FileCRC64(const char *filename)
       cont = 0;
   }
   if (flags & VERBOSE)
-    printf("%llu bytes processed.\n",tot);
+    printf("%llu bytes processed.\n",(long long unsigned) tot);
   close(fd);
   return temp;
 }
@@ -215,10 +245,11 @@ t_crc64 FileCRC64(const char *filename)
 int processDir(const char *dir)
 { /* Process directory and files within it */	
   DIR *dp;
+
   struct dirent *entry;
   struct stat statbuf;
   struct statfs sstat;
-  
+
   if((dp = opendir(dir)) == NULL)
   {
     fprintf(stderr, "Cannot open directory: %s\n",dir);
@@ -226,24 +257,24 @@ int processDir(const char *dir)
   }
   else
   {
-    
     chdir(dir);
-    statfs(entry->d_name, &sstat);
-    switch (sstat.f_type)
-    {
-      case MSDOS_SUPER_MAGIC:
-	fstype = VFAT;
-	break;
-      case NTFS_SB_MAGIC:
-	fstype = NTFS;
-	break;
-      default:
-	fstype = 0;
-	break;
-    }
+
     while((entry = readdir(dp)) != NULL)
     {
       stat(entry->d_name, &statbuf);
+      statfs(entry->d_name, &sstat);
+      switch (sstat.f_type)
+      {
+	case MSDOS_SUPER_MAGIC:
+	  fstype = VFAT;
+	  break;
+	case NTFS_SB_MAGIC:
+	  fstype = NTFS;
+	  break;
+	default:
+	  fstype = 0;
+	  break;
+      }
       if (S_ISDIR(statbuf.st_mode))
       {
 	if(strcmp(".", entry->d_name) == 0 || strcmp("..", entry->d_name) == 0)
@@ -275,23 +306,26 @@ int putCRC(const char *file)
   if (flags & OVERWRITE)
     ATTRFLAGS = 0;
   else
-    ATTRFLAGS = ATTR_CREATE;
+    ATTRFLAGS = XATTR_CREATE;
   
   if (flags & VERBOSE)
     printf("Processing %s : ", file);
   
   checksum_file = FileCRC64(file);
-  if ((attr_set(file, "crc64", (const char *)&checksum_file, sizeof(checksum_file), ATTRFLAGS)) == -1)
-  {
-    fprintf(stderr, "Setting xattr failed on %s: \r\n", file);
-    perror(NULL);
-  }
-  else
-  {
-    processed++;
-    return 0;
-  }
-   
+  if(fstype != VFAT)
+  { /* If not VFAT, attempt to store CRC in extended attribute */
+    if ((setxattr(file, "user.crc64", (const char *)&checksum_file, sizeof(checksum_file), ATTRFLAGS)) == -1)
+    {
+      fprintf(stderr, "Setting xattr failed on %s: \r\n", file);
+      perror(NULL);
+    }
+    else
+    {
+      processed++;
+      return 0; /* And we're done here, return to process next file */
+    }
+  } 
+  
   if ((file_handle = open(hiddenCRCFile(file), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR)) == -1)
   {
     perror(NULL);
@@ -305,6 +339,10 @@ int putCRC(const char *file)
   }
   
   close(file_handle);
+  if(fstype == VFAT) /* Set hidden flag for VFAT */
+    vfat_attr(hiddenCRCFile(file));
+  else if (fstype == NTFS) /* or NTFS */
+    ntfs_attr(hiddenCRCFile(file));
 
   processed++;
   return 0;
@@ -326,7 +364,7 @@ t_crc64 getCRC(const char *file)
   
   if (attribute_format == XATTR)
   {
-    if ((attr_get(file, "crc64", (char *)&checksum_attr, &attr_len, 0)) == -1)
+    if ((getxattr(file, "user.crc64", (char *)&checksum_attr, sizeof(t_crc64)) == -1))
     {
       return 0;
     }
@@ -348,14 +386,39 @@ t_crc64 getCRC(const char *file)
 }
 
 
-int processFile(const char *filename)
+int processFile(char *filename)
 {
   struct stat statbuf;
   int file;
+  struct statfs sstat;
+  char *base_filename;
+  char *dir_filename;
+  char *_filename;
+  _filename = strdup(filename);
+  base_filename = basename(_filename);
+  dir_filename = dirname(_filename);  
 
-  if (filename[0] == '.')
+//  if (strcmp(dir_filename, ".") != 0)
+//    chdir(dir_filename);
+     
+  if (base_filename[0] == '.')
     return 0; /* Don't process hidden files */
 
+    statfs(filename, &sstat);
+    switch (sstat.f_type)
+    {
+      case MSDOS_SUPER_MAGIC:
+	fstype = VFAT;
+	puts("FAT32 detected!");
+	break;
+      case NTFS_SB_MAGIC:
+	fstype = NTFS;
+	break;
+      default:
+	fstype = 0;
+	break;
+    }
+    
   if ((file = stat (filename, &statbuf)) != 0 )
   {
     perror("Failed to open file: \n");
@@ -368,7 +431,7 @@ int processFile(const char *filename)
     {
       if(flags  & VERBOSE)
 	printf("Checking for existing xattrs in %s\n",filename);
-	if(presentCRC64(filename))
+	if(presentCRC64(base_filename))
 	{
 	  fprintf(stderr,"Cannot overwrite existing CRC.\r\n");
 	  return(1);
@@ -408,14 +471,14 @@ int processFile(const char *filename)
     {
       if (FileCRC64(filename) == getCRC(filename))
       {
-	printf("%-20s\t[", filename);
+	printf("%s/%-20s\t[", dir_filename, base_filename);
 	textcolor(BRIGHT,GREEN,BLACK);
 	printf("  OK  ");
 	RESET_TEXT();
       }
       else
       {
-	printf("%-20s\t[", filename);
+	printf("%s/%-20s\t[", dir_filename, base_filename);
 	textcolor(RESET,RED,BLACK);
 	printf(" FAILED ");
 	failed++;
@@ -435,8 +498,12 @@ int processFile(const char *filename)
   } /* End of file processing regime */
     
   if (S_ISDIR(statbuf.st_mode) && (flags & RECURSE))
+  {
     if (processDir(filename))
       return 1;
+  }
+  
+  free(_filename);
   return 0;
 }
 

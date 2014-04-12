@@ -27,7 +27,7 @@
 #define PRINT	0b10000000
 #define EXPORT  0b100000000
 #define IMPORT  0b1000000000
-#define VERSION "0.1.2"
+#define VERSION "0.2.0"
 
 #define XATTR 1
 #define HIDDEN_ATTR 2
@@ -42,16 +42,17 @@
 typedef unsigned long long t_crc64;
 
 int processDir(const char *dir);
-int processFile(const char *filename);
+int processFile(char *filename);
 t_crc64 FileCRC64(const char *filename);
 uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l);
 void textcolor(int attr, int fg, int bg);
 t_crc64 getCRC(const char *filename);
 int presentCRC64(const char *file);
-static int fileExists(const char* file);
 int exportCRC(const char *filename);
 int removeCRC(const char *filename);
 int importCRC(const char *filename);
 int putCRC(const char *file);
 t_crc64 getCRC(const char *file);
-static char* hiddenCRCFile(const char *file);
+int vfat_attr(char *file);
+int ntfs_attr(char *file);
+
