@@ -45,7 +45,7 @@ static char* hiddenCRCFile(const char *file)
   _filename = strdup(file);
   base_filename = basename(_filename);
   dir_filename = dirname(_filename);  
- 
+  printf("FILE %s\n", file);
   strcpy(crc_file, dir_filename);
   strcat(crc_file, "/");
   strcat(crc_file, ".");
@@ -63,28 +63,10 @@ static int fileExists(const char* file) {
 int presentCRC64(const char *file)
 {  /* Check if CRC64 attribute is present. Returns XATTR if xattr, HIDDEN if hidden file. */
   char buf[4096];
-  
-  attrlist_cursor_t cursor;
-  attrlist_ent_t *attrbufl;
-  int attrcount = 0;
   char *current_attr;
   int x;
-  
-  cursor.opaque[0] = 0;
-  cursor.opaque[1] = 0;
-  cursor.opaque[2] = 0;
-  cursor.opaque[3] = 0;
 
-  
-  /* if (attr_list(file, buf, 4096, 0, &cursor) == 0)
-     if (((attrlist_t *) buf)->al_count)
-      for (attrcount = 0; attrcount < ((attrlist_t *) buf)->al_count; attrcount++)
-      {
-	attrbufl = ATTR_ENTRY(buf, attrcount);
-	if (!strcmp(attrbufl->a_name, "crc64")) 
-	  return XATTR;
-	  }*/
-  
+
   x = listxattr(file,buf,4096);
   current_attr = buf;    
   if (x != -1)
@@ -242,14 +224,14 @@ t_crc64 FileCRC64(const char *filename)
   return temp;
 }
 
-int processDir(const char *dir)
+int processDir(char *path, char *dir)
 { /* Process directory and files within it */	
   DIR *dp;
-
+  char *dirend;
   struct dirent *entry;
   struct stat statbuf;
   struct statfs sstat;
-
+  
   if((dp = opendir(dir)) == NULL)
   {
     fprintf(stderr, "Cannot open directory: %s\n",dir);
@@ -258,6 +240,8 @@ int processDir(const char *dir)
   else
   {
     chdir(dir);
+    strcat(path, dir);
+    strcat(path, "/");
 
     while((entry = readdir(dp)) != NULL)
     {
@@ -279,7 +263,7 @@ int processDir(const char *dir)
       {
 	if(strcmp(".", entry->d_name) == 0 || strcmp("..", entry->d_name) == 0)
 	  continue;
-	  processDir(entry->d_name);
+	  processDir(path, entry->d_name);
       }
       else
       {
@@ -291,6 +275,12 @@ int processDir(const char *dir)
       }
      }
     chdir("..");
+    dirend = strrchr(path,'/');
+    if (dirend != NULL)
+      *dirend = 0;
+    dirend = strrchr(path,'/');
+    if (dirend != NULL)
+      *++dirend = 0;
     closedir(dp);
   }
 return 0;
@@ -355,7 +345,6 @@ t_crc64 getCRC(const char *file)
   int attribute_format;
   t_crc64 checksum_attr;
   int file_handle;
-  int attr_len = sizeof(t_crc64);
     
   attribute_format = presentCRC64(file);
   
@@ -390,20 +379,24 @@ int processFile(char *filename)
 {
   struct stat statbuf;
   int file;
+  static char directory[PATH_MAX - 1];
   struct statfs sstat;
   char *base_filename;
   char *dir_filename;
   char *_filename;
+
+  
   _filename = strdup(filename);
   base_filename = basename(_filename);
-  dir_filename = dirname(_filename);  
+  dir_filename = dirname(_filename);
+  
 
-//  if (strcmp(dir_filename, ".") != 0)
-//    chdir(dir_filename);
-     
+  
   if (base_filename[0] == '.')
     return 0; /* Don't process hidden files */
 
+    
+    
     statfs(filename, &sstat);
     switch (sstat.f_type)
     {
@@ -425,6 +418,17 @@ int processFile(char *filename)
     return 1;
   }
   
+  if (S_ISDIR(statbuf.st_mode) && (flags & RECURSE))
+  {
+    if (processDir(directory, filename))
+      return 1;
+    else
+      return 0;
+   
+  }
+  
+  if (strcmp(dir_filename, ".") != 0)
+    strcpy(directory, dir_filename);
   if (flags & STORE)
   {
     if (!(flags & OVERWRITE))
@@ -471,14 +475,14 @@ int processFile(char *filename)
     {
       if (FileCRC64(filename) == getCRC(filename))
       {
-	printf("%s/%-20s\t[", dir_filename, base_filename);
+	printf("%s%-20s\t[", directory, base_filename);
 	textcolor(BRIGHT,GREEN,BLACK);
 	printf("  OK  ");
 	RESET_TEXT();
       }
       else
       {
-	printf("%s/%-20s\t[", dir_filename, base_filename);
+	printf("%s%-20s\t[", directory, base_filename);
 	textcolor(RESET,RED,BLACK);
 	printf(" FAILED ");
 	failed++;
@@ -497,11 +501,7 @@ int processFile(char *filename)
 
   } /* End of file processing regime */
     
-  if (S_ISDIR(statbuf.st_mode) && (flags & RECURSE))
-  {
-    if (processDir(filename))
-      return 1;
-  }
+
   
   free(_filename);
   return 0;

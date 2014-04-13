@@ -41,7 +41,7 @@
 
 typedef unsigned long long t_crc64;
 
-int processDir(const char *dir);
+int processDir(char *directory, char *dir);
 int processFile(char *filename);
 t_crc64 FileCRC64(const char *filename);
 uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l);
