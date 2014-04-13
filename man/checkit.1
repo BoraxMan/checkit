@@ -1,6 +1,6 @@
 .\" Manpage for checkit.
 .\" Contact dennisk@netspace.net.au.
-.TH "man" "8" "21 March 2014" "0.2.0" "checkit man page"
+.TH "man" "8" "13 April 2014" "0.2.0" "checkit man page"
 .SH "NAME"
 checkit \- Checkit is a file integrity tool for Linux and Unix systems.
 .SH "SYNOPSIS"
@@ -24,10 +24,12 @@ Remove stored checksum.  This simply deletes the extended attribute.
 Overwite existing checksum.  By default, checkit does not overwrite an existing checkum.  This option allows you to update the checksum, should the file be deliberately altered).
 .IP \-r
 Recurse through subdirectories.
-.IP\-e
+.IP \-e
 Export CRC to a hidden file.
-.IP\-i
+.IP \-i
 Import CRC from a hidden file.
+.IP \-f
+Read list of files to process from stdin.
 
 
 .SH "EXAMPLES"
@@ -36,6 +38,9 @@ checkit \-s \-o picture.jpg	;Calculates checksum of picture.jpg and overwrites o
 checkit \-s \-r .			;Processes current directory and all sub\-directories and files.
 
 checkit \-c \-r pictures/         ;Check the enture pictures directory. Checkit will report whether all files are OK or not.
+
+find /media/photos/ -iname '*.JPG' | checkit \-cf	; Check all JPG images under /media/photos
+
 .SH "LIMITATION"
 As checkit doesn't repair files, you need to ensure that you have backups of important data.  Checkit stores the CRC in an extended attribute.  This attribute won't be transferred when copying to a filesystem which doesn't support extended attributes, or archived using an archiver which doesn't store them.  Also, when copying, ensure the file manager/copy utility copies attributes.
 

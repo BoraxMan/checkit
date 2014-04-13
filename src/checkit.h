@@ -17,16 +17,18 @@
 #define MAGENTA		5
 #define CYAN		6
 
-#define VERBOSE 0b1
-#define STORE	0b10
-#define CHECK	0b100
-#define DISPLAY	0b1000
-#define REMOVE	0b10000
-#define RECURSE	0b100000
-#define OVERWRITE	0b1000000
-#define PRINT	0b10000000
-#define EXPORT  0b100000000
-#define IMPORT  0b1000000000
+#define VERBOSE 0x01
+#define STORE	0x02
+#define CHECK	0x04
+#define DISPLAY	0x08
+#define REMOVE	0x10
+#define RECURSE	0x20
+#define OVERWRITE	0x40
+#define PRINT	0x80
+#define EXPORT  0x100
+#define IMPORT  0x200
+#define STDIN   0x400
+
 #define VERSION "0.2.0"
 
 #define XATTR 1

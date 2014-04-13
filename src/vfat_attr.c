@@ -16,17 +16,19 @@
 #include <stdio.h>
 
 
-static int _ioctl_attrs(char *file, __u32 *attrs, int ioctlnum)
+int vfat_attr(char *file)
 {
-  int fd;
 
-  // Interesting, we don't need a read-write handle to call the SET ioctl.
-  fd = open(file, O_RDONLY | O_NOATIME);
+  __u32 attrs = 0;
+  int fd;
+  attrs |= ATTR_HIDDEN; 
+ 
+ fd = open(file, O_WRONLY | O_NOATIME);
   if (fd < 0) {
     goto err;
   }
 
-  if (ioctl(fd, ioctlnum, attrs) != 0) {
+  if (ioctl(fd, FAT_IOCTL_SET_ATTRIBUTES, &attrs) != 0) {
     goto err;
   }
 
@@ -35,17 +37,7 @@ static int _ioctl_attrs(char *file, __u32 *attrs, int ioctlnum)
 
   err:
     close (fd);
+    perror("");
     return -1;
-}
-
-
-int vfat_attr(char *file)
-{
-
-  __u32 attrs = 0;
-  
-  attrs |= ATTR_HIDDEN;  /* ATTR_{RO,HIDDEN,SYS,VOLUME,DIR,ARCH} */
-  
-  return _ioctl_attrs(file, &attrs, FAT_IOCTL_SET_ATTRIBUTES);
 
 }

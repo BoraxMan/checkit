@@ -45,13 +45,12 @@ static char* hiddenCRCFile(const char *file)
   _filename = strdup(file);
   base_filename = basename(_filename);
   dir_filename = dirname(_filename);  
-  printf("FILE %s\n", file);
   strcpy(crc_file, dir_filename);
   strcat(crc_file, "/");
   strcat(crc_file, ".");
   strncat(crc_file, base_filename, MAX_FILENAME_LENGTH - 8);
   strcat(crc_file, ".crc64");
-  printf("Hidden file %s\n", crc_file);
+
   return(crc_file);
 }
 
@@ -80,12 +79,11 @@ int presentCRC64(const char *file)
   }
   /* No attribute?  Lets look for an existing hidden file. */
 
-
   if (fileExists(hiddenCRCFile(file)))
     return HIDDEN_ATTR;
-  
+
   return 0;    
-}
+  }
 
 void textcolor(int attr, int fg, int bg)
 { /*Change textcolour */
@@ -105,7 +103,7 @@ int exportCRC(const char *filename)
   if (presentCRC64(filename) != XATTR)
     return 1;
     
-  if (fileExists(hiddenCRCFile(filename)) & (!(flags & OVERWRITE)))
+  if (fileExists(hiddenCRCFile(filename)) && (!(flags & OVERWRITE)))
     return 1; /* Don't overwrite attribute unless allowed. */
 
   if ((file_handle = open(hiddenCRCFile(filename), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR)) == -1)
@@ -237,53 +235,51 @@ int processDir(char *path, char *dir)
     fprintf(stderr, "Cannot open directory: %s\n",dir);
     return(1);
   }
-  else
-  {
-    chdir(dir);
-    strcat(path, dir);
-    strcat(path, "/");
 
-    while((entry = readdir(dp)) != NULL)
+  chdir(dir);
+  strcat(path, dir);
+  strcat(path, "/");
+
+  while((entry = readdir(dp)) != NULL)
+  {
+    stat(entry->d_name, &statbuf);
+    statfs(entry->d_name, &sstat);
+    switch (sstat.f_type)
     {
-      stat(entry->d_name, &statbuf);
-      statfs(entry->d_name, &sstat);
-      switch (sstat.f_type)
+    case MSDOS_SUPER_MAGIC:
+      fstype = VFAT;
+      break;
+    case NTFS_SB_MAGIC:
+      fstype = NTFS;
+      break;
+    default:
+      fstype = 0;
+      break;
+    } /* End switch */
+    if (S_ISDIR(statbuf.st_mode))
+    {
+    if(strcmp(".", entry->d_name) == 0 || strcmp("..", entry->d_name) == 0)
+      continue;
+      processDir(path, entry->d_name);
+    }
+    else
+    {
+      processFile(entry->d_name);
+      if (flags & VERBOSE)
       {
-	case MSDOS_SUPER_MAGIC:
-	  fstype = VFAT;
-	  break;
-	case NTFS_SB_MAGIC:
-	  fstype = NTFS;
-	  break;
-	default:
-	  fstype = 0;
-	  break;
+	printf("Processsing file %s.\n",entry->d_name);
       }
-      if (S_ISDIR(statbuf.st_mode))
-      {
-	if(strcmp(".", entry->d_name) == 0 || strcmp("..", entry->d_name) == 0)
-	  continue;
-	  processDir(path, entry->d_name);
-      }
-      else
-      {
-	processFile(entry->d_name);
-	if (flags & VERBOSE)
-	{
-	  printf("Processsing file %s.\n",entry->d_name);
-	}
-      }
-     }
-    chdir("..");
-    dirend = strrchr(path,'/');
-    if (dirend != NULL)
-      *dirend = 0;
-    dirend = strrchr(path,'/');
-    if (dirend != NULL)
-      *++dirend = 0;
-    closedir(dp);
-  }
-return 0;
+    }
+  } /* End while */
+  chdir("..");
+  dirend = strrchr(path,'/');
+  if (dirend != NULL)
+    *dirend = 0;
+  dirend = strrchr(path,'/');
+  if (dirend != NULL)
+    *++dirend = 0;
+  closedir(dp);
+  return 0;
 }
 
 int putCRC(const char *file)
@@ -315,7 +311,7 @@ int putCRC(const char *file)
       return 0; /* And we're done here, return to process next file */
     }
   } 
-  
+
   if ((file_handle = open(hiddenCRCFile(file), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR)) == -1)
   {
     perror(NULL);
@@ -384,37 +380,28 @@ int processFile(char *filename)
   char *base_filename;
   char *dir_filename;
   char *_filename;
-
   
   _filename = strdup(filename);
   base_filename = basename(_filename);
   dir_filename = dirname(_filename);
-  
+    
+  statfs(filename, &sstat);
+  switch (sstat.f_type)
+  {
+    case MSDOS_SUPER_MAGIC:
+      fstype = VFAT;
+      break;
+    case NTFS_SB_MAGIC:
+      fstype = NTFS;
+      break;
+    default:
+      fstype = 0;
+      break;
+  }
 
-  
-  if (base_filename[0] == '.')
-    return 0; /* Don't process hidden files */
-
-    
-    
-    statfs(filename, &sstat);
-    switch (sstat.f_type)
-    {
-      case MSDOS_SUPER_MAGIC:
-	fstype = VFAT;
-	puts("FAT32 detected!");
-	break;
-      case NTFS_SB_MAGIC:
-	fstype = NTFS;
-	break;
-      default:
-	fstype = 0;
-	break;
-    }
-    
   if ((file = stat (filename, &statbuf)) != 0 )
   {
-    perror("Failed to open file: \n");
+    perror("Failed to stat file: ");
     return 1;
   }
   
@@ -424,18 +411,24 @@ int processFile(char *filename)
       return 1;
     else
       return 0;
-   
   }
   
+  if (base_filename[0] == '.')
+    return 0; /* Don't process hidden files */
+  
   if (strcmp(dir_filename, ".") != 0)
+  {
     strcpy(directory, dir_filename);
+    strcat(directory, "/");
+  }
+  
   if (flags & STORE)
   {
     if (!(flags & OVERWRITE))
     {
       if(flags  & VERBOSE)
 	printf("Checking for existing xattrs in %s\n",filename);
-	if(presentCRC64(base_filename))
+	if(presentCRC64(filename))
 	{
 	  fprintf(stderr,"Cannot overwrite existing CRC.\r\n");
 	  return(1);
@@ -500,8 +493,6 @@ int processFile(char *filename)
 
 
   } /* End of file processing regime */
-    
-
   
   free(_filename);
   return 0;

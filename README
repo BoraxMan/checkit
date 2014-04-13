@@ -1,4 +1,4 @@
-CHECKIT 0.1.1
+CHECKIT 0.2.0
 =============
 
 Checkit is a file integrity tool for Linux and Unix systems.
@@ -90,17 +90,25 @@ checksum, should the file be deliberately altered).
 -r	Recurse through subdirectories.
 -e	Export CRC to a hidden file.
 -i	Import CRC from a hidden file.
+-f	Read list of files to process from stdin.
+
 
 [FILE] can include wildcards.
 
 Examples:
 
-checkit -s -o picture.jpg	;Calculates checksum of picture.jpg and
-overwrites old CRC64
-checkit -s -r .			;Processes current directory and all
-sub-directories and files.
-checkit -c -r pictures/		;Check the enture pictures
-directory. Checkit will report whether all files are OK or not.
+Calculates checksum of picture.jpg and overwrites old CRC64
+checkit -s -o picture.jpg
+
+Processes current directory and all sub-directories and files.
+checkit -s -r .
+
+Check the enture pictures directory. Checkit will report whether all files are OK or not.
+checkit -c -r pictures/
+
+Check all JPG images under /media/photos
+find /media/photos/ -iname '*.JPG' | checkit \-cf
+
 
 LIMITATIONS:
 ------------

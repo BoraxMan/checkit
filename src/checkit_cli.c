@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
 
@@ -27,15 +29,19 @@ void print_help(void)
   puts(" -v  Verbose.  Print more information\t-p   Display CRC64 checksum");
   puts(" -x  Remove stored CRC64 checksum\t-o   Overwrite existing checksum");
   puts(" -r  Recurse through directories\t-i   Import CRC from hidden file");
-  puts(" -e  Export CRC to hidden file");
+  puts(" -e  Export CRC to hidden file  \t-f    Read list if files from stdin");
 }
 
 
 int main(int argc, char *argv[])
 {
   int optch;
+  char *line = NULL;
+  size_t size;
+  ssize_t read;
+  char *ptr;
    
-  while ((optch = getopt(argc, argv,"hscvexirop")) != -1)
+  while ((optch = getopt(argc, argv,"hscvexirfop")) != -1)
     switch (optch)
     {
       case 'h' :
@@ -66,7 +72,9 @@ int main(int argc, char *argv[])
       case 'e' :
 	flags |= EXPORT;
 	break;
-
+      case 'f' :
+	flags |= STDIN;
+	break;
       case 'p' :
 	flags |= DISPLAY;
 	break;
@@ -106,6 +114,17 @@ int main(int argc, char *argv[])
     {
       puts("Cannot import and export at the same time.");
       return 1;
+    }
+    if (flags & STDIN)
+    {
+      while ((read = getline(&line, &size, stdin) != -1))
+      {
+	ptr = strrchr(line, '\n');
+	if (ptr != NULL)
+	  *ptr = 0;
+	processFile(line);
+      }
+    free(line);
     }
     
   optch = optind;
