@@ -27,7 +27,7 @@ int ntfs_attr(const char *file)
   if ((getxattr(file, "system.ntfs_attrib", (char *)&checksum_attr, sizeof(int32_t))) == -1)
   {
     close(fd);
-    return 0;
+    return 1;
   }
   checksum_attr |= FILE_ATTRIBUTE_HIDDEN;
   

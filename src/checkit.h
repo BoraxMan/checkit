@@ -1,58 +1,83 @@
-#define MAX_BUF_LEN  (65536)
 #define RESET_TEXT()	printf("\033[0;0m")
+#define VERSION "0.2.1"
 
-#define RESET		0
-#define BRIGHT 		1
-#define DIM		2
-#define UNDERLINE 	3
-#define BLINK		4
-#define REVERSE		7
-#define HIDDEN		8
+enum errorTypes
+{
+    ERROR_CRC_CALC,
+    ERROR_REMOVE_XATTR,
+    ERROR_STORE_CRC,
+    ERROR_OPEN_DIR,
+    ERROR_OPEN_FILE,
+    ERROR_READ_FILE,
+    ERROR_SET_CRC,
+    ERROR_REMOVE_HIDDEN,
+    ERROR_NO_XATTR,
+    ERROR_NO_OVERWRITE,
+    ERROR_WRITE_FILE
+};
 
-#define BLACK 		0
-#define RED		1
-#define GREEN		2
-#define YELLOW		3
-#define BLUE		4
-#define MAGENTA		5
-#define CYAN		6
+enum attributes
+{
+  RESET		= 0,
+  BRIGHT	= 1,
+  DIM		= 2,
+  UNDERLINE	= 3,
+  BLINK		= 4,
+  REVERSE	= 7,
+  HIDDEN	= 8
+};
 
-#define VERBOSE 0b1
-#define STORE	0b10
-#define CHECK	0b100
-#define DISPLAY	0b1000
-#define REMOVE	0b10000
-#define RECURSE	0b100000
-#define OVERWRITE	0b1000000
-#define PRINT	0b10000000
-#define EXPORT  0b100000000
-#define IMPORT  0b1000000000
-#define VERSION "0.2.0"
+enum colours
+{
+  BLACK		= 0,
+  RED		= 1,
+  GREEN		= 2,
+  YELLOW	= 3,
+  BLUE		= 4,
+  MAGENTA	= 5,
+  CYAN		= 6
+};
 
-#define XATTR 1
-#define HIDDEN_ATTR 2
+enum flags
+{
+  VERBOSE	= 0x01,
+  STORE	   	= 0x02,
+  CHECK		= 0x04,
+  DISPLAY	= 0x08,
+  REMOVE	= 0x10,
+  RECURSE	= 0x20,
+  OVERWRITE	= 0x40,
+  PRINT		= 0x80,
+  EXPORT	= 0x100,
+  IMPORT	= 0x200,
+  PIPEDFILES	= 0x400
+};
 
-#define VFAT 1
-#define NTFS 2
+enum extendedAttributeTypes
+{
+  XATTR = 1,
+  HIDDEN_ATTR = 2
+};
 
-#define MAX_FILENAME_LENGTH 256
-
+enum fsTypes {
+VFAT = 1,
+NTFS = 2
+};
 
 
 typedef unsigned long long t_crc64;
 
-int processDir(char *directory, char *dir);
-int processFile(char *filename);
+char* hiddenCRCFile(const char *file);
 t_crc64 FileCRC64(const char *filename);
 uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l);
 void textcolor(int attr, int fg, int bg);
 t_crc64 getCRC(const char *filename);
 int presentCRC64(const char *file);
-int exportCRC(const char *filename);
+int exportCRC(const char *filename, int flags);
 int removeCRC(const char *filename);
-int importCRC(const char *filename);
-int putCRC(const char *file);
+int importCRC(const char *filename, int flags);
+int putCRC(const char *file, int flags);
 t_crc64 getCRC(const char *file);
 int vfat_attr(char *file);
 int ntfs_attr(char *file);
-
+const char* errorMessage(int error);

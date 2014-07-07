@@ -1,12 +1,251 @@
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/statfs.h>
+#include <linux/limits.h>
+#include <errno.h>
+#include <dirent.h>
+#include <libgen.h>
 
 #include "checkit.h"
 
-extern int flags;
 extern int failed;
 extern int processed;
+
+
+static int processFile(char *filename, int flags);
+static int processDir(char *path, char *dir, int flags);
+static void printErrorMessage(int result, const char *filename);
+
+void printErrorMessage(int result, const char *filename)
+{
+    
+  printf("For file %s: %s\n", filename, errorMessage(result));
+}
+
+
+int processFile(char *filename, int flags)
+{
+  struct stat statbuf;
+  int file;
+  t_crc64 result;
+  t_crc64 resultCRC;
+  static char directory[PATH_MAX - 1];
+
+  char *base_filename;
+  char *dir_filename;
+  char *_filename;
+ 
+  /* Seperate filename into directory and filename parts. */
+  _filename = strdup(filename);
+  base_filename = basename(_filename);
+  dir_filename = dirname(_filename);
+    
+  if ((file = stat (filename, &statbuf)) != 0 )
+  {
+    printErrorMessage(ERROR_OPEN_FILE, filename);
+    return ERROR_OPEN_FILE;
+  }
+  
+  if (S_ISDIR(statbuf.st_mode) && (flags & RECURSE))
+  {
+    result = processDir(directory, filename, flags);
+    if (result)
+    {
+      printErrorMessage(result, filename);
+      return result;
+    }
+    else
+      return 0;
+  }
+  
+  if (base_filename[0] == '.')
+    return 0; /* Don't process hidden files */
+  
+  if (strcmp(dir_filename, ".") != 0)
+    sprintf(directory, "%s/", dir_filename);
+
+  if (flags & STORE)
+  {
+
+    if (!(flags & OVERWRITE))
+    {
+      result = presentCRC64(filename);
+      if(result)
+      {
+	printErrorMessage(ERROR_NO_OVERWRITE, filename);
+	return ERROR_NO_OVERWRITE;
+      }
+    } 
+  } /* We've checked there isn't a CRC we can overwrite.  Lets continue. */
+
+  if (S_ISREG (statbuf.st_mode))
+  {
+	
+    if (flags & DISPLAY) /* Display CRC64 */
+      {
+	result = getCRC(filename);
+	if(!result)
+	{ /* getCRC returns 0 on error, so if 0, print error messsage and exit. */
+	  printErrorMessage(result, filename);
+	  return -1;
+	}
+	printf("Checksum for %s: %llx\n", filename, getCRC(filename));
+      }
+
+    if (flags & EXPORT) /* Export CRC to file */
+    {
+      if (flags & VERBOSE)
+	printf("Exporting attribute for %s to %s\n", filename, hiddenCRCFile(basename(filename)));
+      result = exportCRC(filename, flags);
+      if (result)
+      { 
+	printErrorMessage(result, filename);
+	return result;
+      }
+    } /* End of export routine. */
+
+    if (flags & IMPORT) /* Export CRC to file */
+    {
+      result = importCRC(filename, flags);
+      {
+	printErrorMessage(result, filename);
+	return result;
+      }
+      
+    } /* End of export routine. */
+    
+    
+    if (flags & STORE) /* Calculate and store CRC64 */
+    {
+      printf("Storing checksum for file %s\n", filename);
+      result = putCRC(filename, flags);
+      if (result)
+      {
+	printErrorMessage(result, filename);
+	return result;
+      }
+    } /* End of store routine. */
+    
+    if (flags & CHECK) /* Check CRC */
+    {
+      result = FileCRC64(filename);
+      if(!result)
+      { /* FileCRC64 returns 0 on error, so if 0, print error message (couldn't calculate CRC) and exit. */
+	printErrorMessage(ERROR_CRC_CALC, filename);
+	return -1;
+      }
+      
+      resultCRC = getCRC(filename);
+      if(!resultCRC)
+      { /* getCRC returns 0 on error, so if 0, print error messsage (couldn't read file) and exit. */
+	printErrorMessage(ERROR_READ_FILE, filename);
+	return -1;
+      }
+      
+      if (result == resultCRC)
+      {
+	printf("%s%-20s\t[", directory, base_filename);
+	textcolor(BRIGHT,GREEN,BLACK);
+	printf("  OK  ");
+	RESET_TEXT();
+      }
+      else
+      {
+	printf("%s%-20s\t[", directory, base_filename);
+	textcolor(RESET,RED,BLACK);
+	printf(" FAILED ");
+	failed++;
+	RESET_TEXT();
+      }
+    processed++;
+    printf("]\n");
+    } /* End of Check CRC routine */
+
+    if (flags & REMOVE)
+    {
+      if (flags & VERBOSE)
+	puts("Removing checksum.");
+      result = removeCRC(filename);
+      
+      if (result)
+      {
+	puts("OUCH!");
+	printErrorMessage(result, filename);
+	return result;
+      }
+    } /* End of Remove CRC routine */
+
+
+  } /* End of file processing regime */
+  
+  free(_filename);
+  return 0;
+}
+
+
+int processDir(char *path, char *dir, int flags)
+{ /* Process directory and files within it */	
+  DIR *dp;
+  char *dirend;
+  struct dirent *entry;
+  struct stat statbuf;
+  struct statfs sstat;
+  
+  if((dp = opendir(dir)) == NULL)
+    return ERROR_OPEN_DIR;
+
+  chdir(dir);
+  strcat(path, dir);
+  strcat(path, "/"); /* Assemble directory name. */
+
+  while((entry = readdir(dp)) != NULL)
+  {
+    stat(entry->d_name, &statbuf);
+    statfs(entry->d_name, &sstat);
+
+    if (S_ISDIR(statbuf.st_mode))
+    {
+    if(strcmp(".", entry->d_name) == 0 || strcmp("..", entry->d_name) == 0)
+      continue;
+      processDir(path, entry->d_name, flags);
+    }
+    else
+    {
+      processFile(entry->d_name, flags);
+      if (flags & VERBOSE)
+      {
+	printf("Processing file %s.\n",entry->d_name);
+      }
+    }
+  } /* End while */
+  chdir("..");
+  /* As we go up a directory, we remove the directory name from
+   * the path by setting the '/' character prior to the directory name
+   * to NULL, to truncate the string. */
+  dirend = strrchr(path,'/'); /* The '/' at the end of the path. */
+  if (dirend != NULL)
+    *dirend = 0;
+  dirend = strrchr(path,'/'); /* The '/' at the start of the path. */
+  if (dirend != NULL) /* Make it null, to terminate the string here. */
+    *++dirend = 0;
+  closedir(dp);
+  return 0;
+}
+
+void textcolor(int attr, int fg, int bg)
+{ /*Change textcolour */
+  char command[13];
+
+  /* Command is the control command to the terminal */
+  sprintf(command, "%c[%d;%d;%dm", 0x1B, attr, fg + 30, bg + 40);
+  printf("%s", command);
+} /* end of textcolor() */
+
+
 
 void print_help(void)
 {
@@ -27,15 +266,20 @@ void print_help(void)
   puts(" -v  Verbose.  Print more information\t-p   Display CRC64 checksum");
   puts(" -x  Remove stored CRC64 checksum\t-o   Overwrite existing checksum");
   puts(" -r  Recurse through directories\t-i   Import CRC from hidden file");
-  puts(" -e  Export CRC to hidden file");
+  puts(" -e  Export CRC to hidden file  \t-f    Read list of files from stdin");
 }
 
 
 int main(int argc, char *argv[])
 {
   int optch;
-   
-  while ((optch = getopt(argc, argv,"hscvexirop")) != -1)
+  char *line = NULL;
+  size_t size;
+  ssize_t read;
+  char *ptr;
+  int flags = 0;
+  
+  while ((optch = getopt(argc, argv,"hscvexirfop")) != -1)
     switch (optch)
     {
       case 'h' :
@@ -47,12 +291,27 @@ int main(int argc, char *argv[])
 	break;
       case 'c' :
 	flags |= CHECK;
+	if ((flags & CHECK) && (flags & STORE))
+	{
+	  puts("Cannot store and check CRC at same time.");
+	  return 1;
+	}
 	break;
       case 'v' :
 	flags |= VERBOSE;
 	break;
       case 'x' :
 	flags |= REMOVE;
+	if (flags & CHECK)
+	{
+	  puts("Cannot remove and check CRC at same time.");
+	  return 1;
+	}
+	if (flags & STORE)
+	{
+	  puts("Cannot remove and store CRC at same time.");
+	  return 1;
+	}
 	break;
       case 'o' :
 	flags |= OVERWRITE;
@@ -65,8 +324,15 @@ int main(int argc, char *argv[])
 	break;
       case 'e' :
 	flags |= EXPORT;
+	if (flags & IMPORT)
+	{
+	  puts("Cannot import and export at the same time.");
+	  return 1;
+	}
 	break;
-
+      case 'f' :
+	flags |= PIPEDFILES;
+	break;
       case 'p' :
 	flags |= DISPLAY;
 	break;
@@ -83,41 +349,28 @@ int main(int argc, char *argv[])
     print_help();
     return(0);
   }
-    /* Check for conflicting options */
-    if ((flags & CHECK) && (flags & STORE))
+  if (flags & PIPEDFILES)
+  {
+    while ((read = getline(&line, &size, stdin) != -1))
     {
-      puts("Cannot store and check CRC at same time.");
-      return 1;
+    ptr = strrchr(line, '\n');
+    if (ptr != NULL)
+      *ptr = 0;
+    processFile(line, flags);
     }
-    
-   if ((flags & STORE) && (flags & REMOVE))
-    {
-      puts("Cannot remove and store CRC at same time.");
-      return 1;
-    }
-    
-    if ((flags & CHECK) && (flags & REMOVE))
-    {
-      puts("Cannot remove and check CRC at same time.");
-      return 1;
-    }
-    
-    if ((flags & EXPORT) && (flags & IMPORT))
-    {
-      puts("Cannot import and export at the same time.");
-      return 1;
-    }
+  free(line);
+  }
     
   optch = optind;
 
   if (optch < argc)
-    {
+  {
     do
     {
-      processFile(argv[optch]);
+      processFile(argv[optch], flags);
     }
     while ( ++optch < argc);
-    }  
+  }  
 
   printf("%d file(s) processed.\n", processed);
   if (failed && processed)
@@ -130,5 +383,4 @@ int main(int argc, char *argv[])
   
   return 0;
 }
-
 
