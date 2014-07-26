@@ -61,7 +61,8 @@ enum extendedAttributeTypes
 
 enum fsTypes {
 VFAT = 1,
-NTFS = 2
+NTFS = 2,
+UDF = 3
 };
 
 

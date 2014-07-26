@@ -222,6 +222,9 @@ int putCRC(const char *file, int flags)
     case NTFS_SB_MAGIC:
       fstype = NTFS;
       break;
+    case UDF_SUPER_MAGIC:
+      fstype = UDF;
+      break;
     default:
       fstype = 0;
       break;
@@ -230,7 +233,7 @@ int putCRC(const char *file, int flags)
   ATTRFLAGS = (flags & OVERWRITE) ? 0 : XATTR_CREATE;
 
   checksum_file = FileCRC64(file);
-  if(fstype != VFAT)
+  if(fstype != VFAT && fstype != UDF)
   { /* If not VFAT, attempt to store CRC in extended attribute */
     if ((setxattr(file, attributeName, (const char *)&checksum_file, sizeof(checksum_file), ATTRFLAGS)) == -1)
       return ERROR_SET_CRC;
