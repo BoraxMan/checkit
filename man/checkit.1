@@ -1,6 +1,6 @@
 .\" Manpage for checkit.
 .\" Contact dennisk@netspace.net.au.
-.TH "man" "8" "21 March 2014" "0.2.1" "checkit man page"
+.TH "man" "8" "13 September 2014" "0.3.0" "checkit man page"
 .SH "NAME"
 checkit \- Checkit is a file integrity tool for Linux and Unix systems.
 .SH "SYNOPSIS"
@@ -10,6 +10,8 @@ checkit [OPTIONS]
 Checksum adds additions data assurance capabilities to filesystems which support extended attributes.  Checkit allows you to detect any otherwise undetected data integrity issues or file changes to any file.  By storing a checksum as an extended attribute, checkit provides an easy way to detect any silent data corruption, bit rot or otherwise modified error.
 
 .SH "OPTIONS"
+.IP \-V
+Print licence
 .IP \-s
 Calcuates and stores the checksum.
 .IP \-c
@@ -28,7 +30,10 @@ Recurse through subdirectories.
 Export CRC to a hidden file.
 .IP\-i
 Import CRC from a hidden file.
-
+.IP\-d
+Disallow updating of CRC on this file (for files you do not intend to change)
+.IP\-u
+Allow CRC on this file to be updated (for files you intend to change)
 
 .SH "EXAMPLES"
 checkit \-s \-o picture.jpg	;Calculates checksum of picture.jpg and overwrites old CRC64
@@ -36,10 +41,26 @@ checkit \-s \-o picture.jpg	;Calculates checksum of picture.jpg and overwrites o
 checkit \-s \-r .			;Processes current directory and all sub\-directories and files.
 
 checkit \-c \-r pictures/         ;Check the enture pictures directory. Checkit will report whether all files are OK or not.
-.SH "LIMITATION"
-As checkit doesn't repair files, you need to ensure that you have backups of important data.  Checkit stores the CRC in an extended attribute.  This attribute won't be transferred when copying to a filesystem which doesn't support extended attributes, or archived using an archiver which doesn't store them.  Also, when copying, ensure the file manager/copy utility copies attributes.
+
+checkit \-d  dissertation.txt	;Sets the CRC as read only.  Checkit will NOT update the CRC if you try to store the checksum again.
+
+checkit \-u dissertation.txt	;Setc the CRC as read write.  Checkit will update the checksum if you run it with the -s option.
+
+.SH "NOTES"
+
+By default, once checkit has created a checksum on a file, it will refuse to update or overwrite it if you try to calculate and store the CRC again.
+This is to protect against inadvertant updates, should it accidently be ran again.  This way, you can detect any changes or errors.
+If you DO plan to edit or modify the file, then you can set the checksum as 'read/write' by using the \-d option, which will allows checkit to update the checksum if run again on the file.  This gives you a 'per file' level of control as to whether you want checkit to recalculate files you plan to change, or to avoid recalculating files you don't want changed at all.
+
+Checkit will use a 'hidden file', which has the same name as the files name, but with a '.' at the beginning and a '.crc64' at the end, if it cannot use extended attributes (i.e., you are running it on a file over NFS or on a FAT32 formatted flash drive).
+
+
+.SH "LIMITATIONS"
+As checkit doesn't repair files, you need to ensure that you have backups of important data.  Checkit stores the CRC in an extended attribute.  This attribute won't be transferred when copying to a filesystem which doesn't support extended attributes, or archived using an archiver which doesn't store them.  Also, when copying, ensure the file manager/copy utility copies attributes.  If you transfer the file to a filesystem which does not support extended attributes, you can use the 'export' function to create a hidden files, to allow checkit to continue to function on the file for other filesystems (such as UDF/ISO9660).
+
 
 .SH "BUGS"
 No known bugs.
+
 .SH "AUTHOR"
 Dennis Katsonis (dennisk@netspace.net.au)

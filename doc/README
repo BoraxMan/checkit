@@ -68,8 +68,19 @@ HOW TO USE:
 Checkit calculates and stores the CRC as an extended attribute
 (user.crc64) or as a hidden file.  The file must reside on a filesystem
 which supports extended attributes (XFS, JFS, EXT2, EXT3, EXT4, BTRFS,
-ReiserFS among
-others) to use the extended attribute (recommended).
+ReiserFS among others) to use the extended attribute (recommended).
+
+Checkit allows you to determine whether the checksum is 'read only'
+or 'read write', using the -d and -u options.  A 'read only' checksum
+will not be updated, unless the '-o' overwrite option is used.  This
+way, the checksum is not inadvertantly updated when rerunning checkit
+over it.  A 'read write' checksum can be updated, and can be used in
+those cases where you want to rerun checkit over the file, and
+recompute the checksum because of intended changes.  For the most 
+part, checkit is intended for files you want to remain static,
+such as your precious family photos and movies, archives and such.
+
+
 
 OPERATION:
 ----------
@@ -78,6 +89,7 @@ checkit [OPTION] [FILE]
 
 Options:
 
+-V	Print licence
 -s	Calcuates and stores the checksum.
 -c	Check file against stored checksum.
 -v	Verbose.  Print more information.
@@ -90,7 +102,10 @@ checksum, should the file be deliberately altered).
 -r	Recurse through subdirectories.
 -e	Export CRC to a hidden file.
 -i	Import CRC from a hidden file.
-
+-d	Disallow updating of CRC on this file
+(for files you do not intend to change)
+-u	Allow CRC on this file to be updated (for files you intend
+to change)
 [FILE] can include wildcards.
 
 Examples:
@@ -102,12 +117,19 @@ sub-directories and files.
 checkit -c -r pictures/		;Check the enture pictures
 directory. Checkit will report whether all files are OK or not.
 
+checkit \-d  dissertation.txt	;Sets the CRC as read only.
+Checkit will NOT update the CRC if you try to store the checksum again.
+
+checkit \-u dissertation.txt	;Setc the CRC as read write.
+Checkit will update the checksum if you run it with the -s option.
+
 LIMITATIONS:
 ------------
 
 As checkit doesn't repair files, you need to ensure that you have backups
 of important data.  Checkit by default stores the CRC in an extended
 attribute.
+
 This attribute won't be transferred when copying to a filesystem which
 doesn't support extended attributes, or archived using an archiver which
 doesn't store them.  Note that some file managers may not copy extended
@@ -115,11 +137,19 @@ attributes by default.	You should export the checksums to a hidden
 file using the -e option beforehand if using an archiver or copying to
 a filesystem which does not support extended attributes.
 
+Checkit cannot detect changes and recompute the checksum without being run
+manually, because it doesn't run in the background.  While having a 'checkit'
+daemon, which can automatically update the checksum should the file be
+changed is potentially useful, this is better done by migrating to BTRFS
+or ZFS, which handles this more efficiently than checkit ever could.
+
 TODO:
 -----
 
 * Intergration with file managers.
+* -o Overwite option will be removed.
 
 CRC64 routine.
 
-The checksum routine is the crc-64-jones created by Salvatore Sanfilippo.
+The checksum routine is the crc-64-jones routine created by
+Salvatore Sanfilippo.

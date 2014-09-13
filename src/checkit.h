@@ -1,5 +1,29 @@
+/*  CHECKIT  
+    A file checksummer and integrity tester 
+    Copyright (C) 2014 Dennis Katsonis
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #define RESET_TEXT()	printf("\033[0;0m")
-#define VERSION "0.2.1"
+#define VERSION "0.3.0"
+
+enum validities
+{
+  VALID = 0,
+  INVALID = 1
+};
 
 enum errorTypes
 {
@@ -16,7 +40,7 @@ enum errorTypes
     ERROR_WRITE_FILE
 };
 
-enum attributes
+enum characterAttributes
 {
   RESET		= 0,
   BRIGHT	= 1,
@@ -27,7 +51,7 @@ enum attributes
   HIDDEN	= 8
 };
 
-enum colours
+enum characterColours
 {
   BLACK		= 0,
   RED		= 1,
@@ -50,7 +74,9 @@ enum flags
   PRINT		= 0x80,
   EXPORT	= 0x100,
   IMPORT	= 0x200,
-  PIPEDFILES	= 0x400
+  PIPEDFILES	= 0x400,
+  SETCRCRO	= 0x800, /* Set CRC to be read only */
+  SETCRCRW	= 0x1000 /* set CRC to be read write */
 };
 
 enum extendedAttributeTypes
@@ -59,12 +85,26 @@ enum extendedAttributeTypes
   HIDDEN_ATTR = 2
 };
 
+enum checkitOptionsEnum
+{
+  UPDATEABLE	= 0x01,
+  STATIC	= 0x02,
+  OPT_ERROR	= 0x04
+};
+
+
 enum fsTypes {
 VFAT = 1,
 NTFS = 2,
-UDF = 3
+UDF = 3,
+XFS = 4,
+JFS = 5,
+NFS = 6,
+SMB = 7,
+CIFS = 8
 };
 
+static const int LIST_XATTR_BUFFER_SIZE =  2048; /* Statically allocated buffer. */
 
 typedef unsigned long long t_crc64;
 
@@ -82,3 +122,4 @@ t_crc64 getCRC(const char *file);
 int vfat_attr(char *file);
 int ntfs_attr(char *file);
 const char* errorMessage(int error);
+int getfsType(const char *file);

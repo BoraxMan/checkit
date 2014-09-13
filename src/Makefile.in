@@ -91,7 +91,8 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_checkit_OBJECTS = checkit_cli.$(OBJEXT) checkit.$(OBJEXT) \
-	crc64.$(OBJEXT) vfat_attr.$(OBJEXT) ntfs_attr.$(OBJEXT)
+	checkit_attr.$(OBJEXT) crc64.$(OBJEXT) vfat_attr.$(OBJEXT) \
+	ntfs_attr.$(OBJEXT)
 checkit_OBJECTS = $(am_checkit_OBJECTS)
 checkit_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -238,7 +239,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CFLAGS = -Wall -O3 -s
 AM_LDFLAGS = 
-checkit_SOURCES = checkit_cli.c checkit.c crc64.c vfat_attr.c ntfs_attr.c
+checkit_SOURCES = checkit_cli.c checkit.c checkit_attr.c crc64.c vfat_attr.c ntfs_attr.c
 all: all-am
 
 .SUFFIXES:
@@ -327,6 +328,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/checkit.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/checkit_attr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/checkit_cli.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/crc64.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntfs_attr.Po@am__quote@

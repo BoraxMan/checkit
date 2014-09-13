@@ -1,10 +1,20 @@
-/*******************************************/
-/*              CHECKIT                    */
-/* A file checksummer and integrity tester */
-/*    By Dennis Katsonis   March 2014      */
-/*         dennisk@netspace.net.au         */
-/*                                         */
-/*******************************************/
+/*  CHECKIT  
+    A file checksummer and integrity tester 
+    Copyright (C) 2014 Dennis Katsonis
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include <string.h>
 #include <stdlib.h>
@@ -27,9 +37,6 @@
 #include "fsmagic.h"
 
 const int MAX_BUF_LEN  = 65536;
-const int LIST_XATTR_BUFFER_SIZE =  2048; /* Statically allocated buffer. */
-
-
 int processed = 0;
 int failed = 0;
 
@@ -49,8 +56,6 @@ const char* errorMessage(int error)
     "No extended attribute to export.",
     "Can not overwrite existing checksum.",
     "Could not write to file."};
-  
-
   return _error[error];
 }
 
@@ -207,34 +212,24 @@ t_crc64 FileCRC64(const char *filename)
 int putCRC(const char *file, int flags)
 {     
   t_crc64 checksum_file;
+  t_crc64 oldCRC = 0;
 
   int file_handle;
   int ATTRFLAGS;
-  int fstype = 0;
-  struct statfs sstat;
-    
-  statfs(file, &sstat);
-  switch (sstat.f_type)
-    {
-    case MSDOS_SUPER_MAGIC:
-      fstype = VFAT;
-      break;
-    case NTFS_SB_MAGIC:
-      fstype = NTFS;
-      break;
-    case UDF_SUPER_MAGIC:
-      fstype = UDF;
-      break;
-    default:
-      fstype = 0;
-      break;
-    } /* End switch */
+  int fstype;
+  fstype = getfsType(file);
       
   ATTRFLAGS = (flags & OVERWRITE) ? 0 : XATTR_CREATE;
-
+  
+  oldCRC = getCRC(file);
   checksum_file = FileCRC64(file);
-  if(fstype != VFAT && fstype != UDF)
-  { /* If not VFAT, attempt to store CRC in extended attribute */
+  if ((checksum_file != oldCRC) && (oldCRC != 0) && (checksum_file != 0))
+  {
+    printf("File %s has been changed!\n", file);
+  }
+  
+  if(fstype != VFAT && fstype != UDF && fstype != NFS)
+  { /* If not VFAT or UDF, attempt to store CRC in extended attribute */
     if ((setxattr(file, attributeName, (const char *)&checksum_file, sizeof(checksum_file), ATTRFLAGS)) == -1)
       return ERROR_SET_CRC;
     else
@@ -291,6 +286,41 @@ t_crc64 getCRC(const char *file)
   return ERROR_CRC_CALC;
 }
 
-
-
-
+int getfsType(const char *file)
+{
+  int fstype;
+  struct statfs sstat;
+  
+  statfs(file, &sstat);
+  switch (sstat.f_type)
+    {
+    case MSDOS_SUPER_MAGIC:
+      fstype = VFAT;
+      break;
+    case NTFS_SB_MAGIC:
+      fstype = NTFS;
+      break;
+    case UDF_SUPER_MAGIC:
+      fstype = UDF;
+      break;
+    case XFS_SUPER_MAGIC:
+      fstype = XFS;
+      break;
+    case JFS_SUPER_MAGIC:
+      fstype = JFS;
+      break;
+    case NFS_SUPER_MAGIC:
+      fstype = NFS;
+      break;
+    case SMB_SUPER_MAGIC:
+      fstype = SMB;
+      break;
+    case CIFS_MAGIC_NUMBER:
+      fstype = CIFS;
+      break;
+    default:
+      fstype = 0;
+      break;
+    }
+  return fstype;
+}

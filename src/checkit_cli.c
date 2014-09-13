@@ -1,3 +1,22 @@
+/*  CHECKIT  
+    A file checksummer and integrity tester 
+    Copyright (C) 2014 Dennis Katsonis
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -11,10 +30,10 @@
 #include <libgen.h>
 
 #include "checkit.h"
+#include "checkit_attr.h"
 
 extern int failed;
 extern int processed;
-
 
 static int processFile(char *filename, int flags);
 static int processDir(char *path, char *dir, int flags);
@@ -26,6 +45,36 @@ void printErrorMessage(int result, const char *filename)
   printf("For file %s: %s\n", filename, errorMessage(result));
 }
 
+void printHeader(void)
+{
+  printf("CHECKIT: A file checksum utility.\tVersion : %s\n",VERSION);
+  puts("(C) Dennis Katsonis (2014)");
+  puts("");
+  puts("CRC64 Copyright (c) 2012, Salvatore Sanfilippo <antirez at gmail dot com>");
+  puts("All rights reserved.");
+  puts("");
+}
+
+
+void printLicence(void)
+{
+  printHeader();
+  puts("License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.");
+  puts("");
+  puts("This program is free software: you can redistribute it and/or modify");
+  puts("it under the terms of the GNU General Public License as published by");
+  puts("the Free Software Foundation, either version 3 of the License, or");
+  puts("(at your option) any later version.");
+  puts("");
+  puts("This program is distributed in the hope that it will be useful,");
+  puts("but WITHOUT ANY WARRANTY; without even the implied warranty of");
+  puts("MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the");
+  puts("GNU General Public License for more details.");
+  puts("You should have received a copy of the GNU General Public License");
+  puts("along with this program.  If not, see <http://www.gnu.org/licenses/>.");
+}
+
+  
 
 int processFile(char *filename, int flags)
 {
@@ -38,6 +87,7 @@ int processFile(char *filename, int flags)
   char *base_filename;
   char *dir_filename;
   char *_filename;
+  char checkitAttributes;
  
   /* Seperate filename into directory and filename parts. */
   _filename = strdup(filename);
@@ -68,10 +118,12 @@ int processFile(char *filename, int flags)
   if (strcmp(dir_filename, ".") != 0)
     sprintf(directory, "%s/", dir_filename);
 
+  
+  checkitAttributes = getCheckitOptions(filename);
+  
   if (flags & STORE)
   {
-
-    if (!(flags & OVERWRITE))
+    if (!(flags & OVERWRITE) && (checkitAttributes != UPDATEABLE))
     {
       result = presentCRC64(filename);
       if(result)
@@ -79,8 +131,8 @@ int processFile(char *filename, int flags)
 	printErrorMessage(ERROR_NO_OVERWRITE, filename);
 	return ERROR_NO_OVERWRITE;
       }
-    } 
-  } /* We've checked there isn't a CRC we can overwrite.  Lets continue. */
+    }
+  } /* We've checked there isn't a CRC we can overwrite and we are allowed to.  Lets continue. */
 
   if (S_ISREG (statbuf.st_mode))
   {
@@ -94,7 +146,37 @@ int processFile(char *filename, int flags)
 	  return -1;
 	}
 	printf("Checksum for %s: %llx\n", filename, getCRC(filename));
+	checkitAttributes = getCheckitOptions(filename);
+	if (checkitAttributes == UPDATEABLE)
+	  printf("R/W Checksum: Checkit can update this checksum.\n");
+	if (checkitAttributes == STATIC)
+	  printf("R/O Checksum: Checkit will not update this checksum.\n");
       }
+    
+    if (flags & SETCRCRO)
+    {
+
+      if(flags & VERBOSE)
+	printf("Setting CRC for %s to remain static/read only.\n", filename);
+      if (setCheckitOptions(filename, STATIC))
+      {
+	printErrorMessage(result,filename);
+	return -1;
+      }
+    } /* End of set CRC option routine */
+    
+    if (flags & SETCRCRW)
+    {
+      if(flags & VERBOSE)
+	printf("Setting CRC for %s to allow updates/read-write.\n", filename);
+
+      if (setCheckitOptions(filename, UPDATEABLE))
+      {
+	printErrorMessage(result,filename);
+	return -1;
+      }
+    } /* End of set CRC option routine */
+      
 
     if (flags & EXPORT) /* Export CRC to file */
     {
@@ -122,7 +204,7 @@ int processFile(char *filename, int flags)
     if (flags & STORE) /* Calculate and store CRC64 */
     {
       printf("Storing checksum for file %s\n", filename);
-      result = putCRC(filename, flags);
+      result = putCRC(filename, OVERWRITE);
       if (result)
       {
 	printErrorMessage(result, filename);
@@ -161,7 +243,7 @@ int processFile(char *filename, int flags)
 	failed++;
 	RESET_TEXT();
       }
-    processed++;
+
     printf("]\n");
     } /* End of Check CRC routine */
 
@@ -169,11 +251,12 @@ int processFile(char *filename, int flags)
     {
       if (flags & VERBOSE)
 	puts("Removing checksum.");
+      
       result = removeCRC(filename);
+      result |= removeCheckitOptions(filename);
       
       if (result)
       {
-	puts("OUCH!");
 	printErrorMessage(result, filename);
 	return result;
       }
@@ -181,7 +264,6 @@ int processFile(char *filename, int flags)
 
 
   } /* End of file processing regime */
-  
   free(_filename);
   return 0;
 }
@@ -247,14 +329,9 @@ void textcolor(int attr, int fg, int bg)
 
 
 
-void print_help(void)
+void printHelp(void)
 {
-  printf("CHECKIT: A file checksum utility.\tVersion : %s\n",VERSION);
-  puts("(C) Dennis Katsonis (2014)");
-  puts("");
-  puts("CRC64 Copyright (c) 2012, Salvatore Sanfilippo <antirez at gmail dot com>");
-  puts("All rights reserved.");
-  puts("");
+  printHeader();
   puts("Checkit stores a checksum (CRC64) as an extended attribute.  Using");
   puts("this program you can easily calculate and store a checksum as");
   puts("a file attribute, and check the file data against the checksum");
@@ -263,10 +340,13 @@ void print_help(void)
   puts("");
   puts("Options :");
   puts(" -s  Calculate and store checksum\t-c   Check file against stored checksum");
-  puts(" -v  Verbose.  Print more information\t-p   Display CRC64 checksum");
+  puts(" -v  Verbose.  Print more information\t-p   Display CRC64 checksum and status");
   puts(" -x  Remove stored CRC64 checksum\t-o   Overwrite existing checksum");
   puts(" -r  Recurse through directories\t-i   Import CRC from hidden file");
-  puts(" -e  Export CRC to hidden file  \t-f    Read list of files from stdin");
+  puts(" -e  Export CRC to hidden file  \t-f   Read list of files from stdin");
+  puts(" -u  Allow CRC on this file to be updated (for files you intend to change)");
+  puts(" -d  Disallow updating of CRC on this file (for files you do not intend to change)");
+  puts(" -V  Print licence");
 }
 
 
@@ -279,11 +359,15 @@ int main(int argc, char *argv[])
   char *ptr;
   int flags = 0;
   
-  while ((optch = getopt(argc, argv,"hscvexirfop")) != -1)
+  while ((optch = getopt(argc, argv,"hscvVudexirfop")) != -1)
     switch (optch)
     {
       case 'h' :
-	print_help();
+	printHelp();
+	return 0;
+	break;
+      case 'V' :
+	printLicence();
 	return 0;
 	break;
       case 's' :
@@ -297,6 +381,7 @@ int main(int argc, char *argv[])
 	  return 1;
 	}
 	break;
+
       case 'v' :
 	flags |= VERBOSE;
 	break;
@@ -322,6 +407,22 @@ int main(int argc, char *argv[])
       case 'i' :
         flags |= IMPORT;
 	break;
+      case 'u' :
+	flags |= SETCRCRW;
+	if (flags & SETCRCRO)
+	{
+	  puts("Cannot disallow and allow changes to CRC at the same time!");
+	  return 1;
+	}
+	break;
+      case 'd' :
+	flags |= SETCRCRO;
+	if (flags & SETCRCRW)
+	{
+	  puts("Cannot disallow and allow changes to CRC at the same time!");
+	  return 1;
+	}
+	break;
       case 'e' :
 	flags |= EXPORT;
 	if (flags & IMPORT)
@@ -340,13 +441,13 @@ int main(int argc, char *argv[])
       case '?' :
 	puts("Unknown option.");
 	puts("");
-	print_help();
+	printHelp();
 	break;
   }
-  
+
   if (argc <=1)
   {
-    print_help();
+    printHelp();
     return(0);
   }
   if (flags & PIPEDFILES)
@@ -360,7 +461,7 @@ int main(int argc, char *argv[])
     }
   free(line);
   }
-    
+
   optch = optind;
 
   if (optch < argc)

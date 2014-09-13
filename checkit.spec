@@ -1,14 +1,14 @@
 Summary: A file integrity checksum tool
 Name: checkit
-Version: 0.2.1
+Version: 0.3.0
 Release: 1
 License: GPL
 Group: System
-Source: http://dennisk.customer.netspace.net.au/checkit/checkit-0.2.1.tar.gz
+Source: http://dennisk.customer.netspace.net.au/checkit/checkit-0.3.0.tar.gz
 URL: http://dennisk.customer.netspace.net.au/checkit.html
 Distribution: Fedora
 Vendor: DK Soft
-Packager: Dennis Katsoni <dennisk@netspace.net.au>
+Packager: Dennis Katsonis <dennisk@netspace.net.au>
 
 %description
 Checksum adds additions data assurance

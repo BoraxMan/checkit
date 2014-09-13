@@ -16,5 +16,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-static const uint64_t crc64_tab[256];
-uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l);
+char getCheckitOptions(const char *file);
+int setCheckitOptions(const char *file, char checkitOptions);
+int removeCheckitOptions(const char *file);
