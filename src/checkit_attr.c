@@ -44,7 +44,7 @@ int setCheckitOptions(const char *file, char checkitOptions)
       return ERROR_SET_CRC;
     else
     {
-      processed++;
+      ++processed;
       return 0; /* And we're done here, return to process next file */
     }
   }

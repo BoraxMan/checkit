@@ -135,7 +135,7 @@ int exportCRC(const char *filename, int flags)
   if ((removexattr(filename, attributeName)) == -1)
     return ERROR_REMOVE_XATTR;
   
-  processed++;
+  ++processed;
   return 0;
 }
   
@@ -150,7 +150,7 @@ int removeCRC(const char *filename)
     if ((unlink(hiddenCRCFile(filename)) == -1) && VERBOSE)
       return ERROR_REMOVE_HIDDEN;
 
-  processed++;
+  ++processed;
   return 0;
 }
 
@@ -175,7 +175,7 @@ int importCRC(const char *filename, int flags)
     return ERROR_SET_CRC;
     
   unlink(hiddenCRCFile(filename));
-  processed++;
+  ++processed;
   return 0;
 }
 
@@ -234,7 +234,7 @@ int putCRC(const char *file, int flags)
       return ERROR_SET_CRC;
     else
     {
-      processed++;
+      ++processed;
       return 0; /* And we're done here, return to process next file */
     }
   } 
@@ -250,7 +250,7 @@ int putCRC(const char *file, int flags)
   else if (fstype == NTFS) /* or NTFS */
     ntfs_attr(hiddenCRCFile(file));
 
-  processed++;
+  ++processed;
   return 0;
 }
 
@@ -274,14 +274,20 @@ t_crc64 getCRC(const char *file)
       return ERROR_CRC_CALC;
     }
     else
+    {
+      ++processed;
       return checksum_attr;
+    }
   }
   if (attribute_format == HIDDEN_ATTR)
   {
     if ((file_handle = open(hiddenCRCFile(file), O_RDONLY)) == -1)
       return ERROR_CRC_CALC;
     read(file_handle, &checksum_attr, sizeof(t_crc64));
-    return checksum_attr;
+    {
+      ++processed;
+      return checksum_attr;
+    }
   }
   return ERROR_CRC_CALC;
 }
