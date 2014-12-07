@@ -193,6 +193,7 @@ int processFile(char *filename, int flags)
     if (flags & IMPORT) /* Export CRC to file */
     {
       result = importCRC(filename, flags);
+      if (result)
       {
 	printErrorMessage(result, filename);
 	return result;
@@ -265,6 +266,7 @@ int processFile(char *filename, int flags)
 
   } /* End of file processing regime */
   free(_filename);
+  ++processed;
   return 0;
 }
 
@@ -439,8 +441,7 @@ int main(int argc, char *argv[])
 	break;
 	
       case '?' :
-	puts("Unknown option.");
-	puts("");
+	printf("Unknown option.\n");
 	printHelp();
 	break;
   }

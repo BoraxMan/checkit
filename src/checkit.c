@@ -41,7 +41,7 @@ int processed = 0;
 int failed = 0;
 
 const char* attributeName = "user.crc64";
- 
+
 const char* errorMessage(int error)
 { /* Standardised error messages. */
   char *_error[] = {
@@ -94,7 +94,7 @@ int presentCRC64(const char *file)
   do {
     if (strcmp(current_attr, attributeName) == 0)
       return XATTR;
-     else
+    else
       current_attr += (strlen(current_attr) + 1);
     } while ((current_attr - buf) < x);
   }
@@ -126,7 +126,7 @@ int exportCRC(const char *filename, int flags)
   
   crc64 = getCRC(filename);
   if(!crc64) /* If 0 returned (error), return with error being we couldn't read the file.
-              * perror will print more detail. */
+	      * perror will print more detail. */
     return ERROR_READ_FILE;
   
   write(file_handle, &crc64, sizeof (t_crc64));
@@ -135,7 +135,7 @@ int exportCRC(const char *filename, int flags)
   if ((removexattr(filename, attributeName)) == -1)
     return ERROR_REMOVE_XATTR;
   
-  ++processed;
+  //++processed;
   return 0;
 }
   
@@ -150,7 +150,7 @@ int removeCRC(const char *filename)
     if ((unlink(hiddenCRCFile(filename)) == -1) && VERBOSE)
       return ERROR_REMOVE_HIDDEN;
 
-  ++processed;
+  //++processed;
   return 0;
 }
 
@@ -168,14 +168,15 @@ int importCRC(const char *filename, int flags)
   if ((file_handle = open(hiddenCRCFile(filename), O_RDONLY)) == -1)
     return ERROR_OPEN_FILE;
   
-  crc64 = getCRC(filename);
+  /*crc64 = getCRC(filename);*/
   read(file_handle, &crc64, sizeof (t_crc64));
   close(file_handle);
   if ((setxattr(filename, attributeName, (const char *)&crc64, sizeof(crc64), ATTRFLAGS)) == -1)
     return ERROR_SET_CRC;
-    
+
   unlink(hiddenCRCFile(filename));
-  ++processed;
+  //++processed;
+
   return 0;
 }
 
@@ -234,7 +235,7 @@ int putCRC(const char *file, int flags)
       return ERROR_SET_CRC;
     else
     {
-      ++processed;
+/* ++processed; */ 
       return 0; /* And we're done here, return to process next file */
     }
   } 
@@ -250,7 +251,7 @@ int putCRC(const char *file, int flags)
   else if (fstype == NTFS) /* or NTFS */
     ntfs_attr(hiddenCRCFile(file));
 
-  ++processed;
+  //++processed;
   return 0;
 }
 
@@ -275,7 +276,7 @@ t_crc64 getCRC(const char *file)
     }
     else
     {
-      ++processed;
+    /* ++processed; */
       return checksum_attr;
     }
   }
@@ -285,7 +286,7 @@ t_crc64 getCRC(const char *file)
       return ERROR_CRC_CALC;
     read(file_handle, &checksum_attr, sizeof(t_crc64));
     {
-      ++processed;
+    /* ++processed; */
       return checksum_attr;
     }
   }
