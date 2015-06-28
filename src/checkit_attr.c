@@ -43,10 +43,7 @@ int setCheckitOptions(const char *file, char checkitOptions)
     if ((setxattr(file, checkitOptionsName, (const char *)&checkitOptions, sizeof(checkitOptions), 0)) == -1)
       return ERROR_SET_CRC;
     else
-    {
-      ++processed;
       return 0; /* And we're done here, return to process next file */
-    }
   }
   else
   {

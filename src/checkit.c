@@ -55,7 +55,9 @@ const char* errorMessage(int error)
     "Could not remove hidden checksum file.",
     "No extended attribute to export.",
     "Can not overwrite existing checksum.",
-    "Could not write to file."};
+    "Could not write to file.",
+    "Filename too long."
+  };
   return _error[error];
 }
 
@@ -65,7 +67,9 @@ char* hiddenCRCFile(const char *file)
   char *base_filename;
   char *dir_filename;
   char *_filename;
+   
   _filename = strdup(file);
+  
   base_filename = basename(_filename);
   dir_filename = dirname(_filename);  
   sprintf(crc_file, "%s//.%s.crc64", dir_filename, base_filename);
@@ -94,7 +98,8 @@ int presentCRC64(const char *file)
   do {
     if (strcmp(current_attr, attributeName) == 0)
       return XATTR;
-    else
+
+      else
       current_attr += (strlen(current_attr) + 1);
     } while ((current_attr - buf) < x);
   }

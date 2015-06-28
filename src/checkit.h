@@ -17,7 +17,7 @@
 */
 
 #define RESET_TEXT()	printf("\033[0;0m")
-#define VERSION "0.3.1"
+#define VERSION "0.3.2"
 
 enum validities
 {
@@ -37,7 +37,8 @@ enum errorTypes
     ERROR_REMOVE_HIDDEN,
     ERROR_NO_XATTR,
     ERROR_NO_OVERWRITE,
-    ERROR_WRITE_FILE
+    ERROR_WRITE_FILE,
+    ERROR_FILENAME_OVERFLOW
 };
 
 enum characterAttributes

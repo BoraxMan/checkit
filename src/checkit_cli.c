@@ -93,7 +93,8 @@ int processFile(char *filename, int flags)
   _filename = strdup(filename);
   base_filename = basename(_filename);
   dir_filename = dirname(_filename);
-    
+
+  
   if ((file = stat (filename, &statbuf)) != 0 )
   {
     printErrorMessage(ERROR_OPEN_FILE, filename);
