@@ -47,7 +47,7 @@ void printErrorMessage(int result, const char *filename)
 
 void printHeader(void)
 {
-  printf("CHECKIT: A file checksum utility.\tVersion : %s\n",VERSION);
+  printf("CHECKIT: A file checksum utility.\tVersion : %s\n",Version);
   puts("(C) Dennis Katsonis (2014)");
   puts("");
   puts("CRC64 Copyright (c) 2012, Salvatore Sanfilippo <antirez at gmail dot com>");
@@ -318,6 +318,8 @@ int processDir(char *path, char *dir, int flags)
   if (dirend != NULL) /* Make it null, to terminate the string here. */
     *++dirend = 0;
   closedir(dp);
+  /* We remove the '/' twice because there is one at the end of the path, but we want to delete
+   * the one prior to the last directory entry in the string.*/
   return 0;
 }
 
@@ -442,7 +444,6 @@ int main(int argc, char *argv[])
 	break;
 	
       case '?' :
-	printf("Unknown option.\n");
 	printHelp();
 	break;
   }
@@ -474,7 +475,11 @@ int main(int argc, char *argv[])
     }
     while ( ++optch < argc);
   }  
-
+  else
+  {
+    puts("No files specified.");
+    return 0;
+  }
   printf("%d file(s) processed.\n", processed);
   if (failed && processed)
     {

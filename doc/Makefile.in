@@ -76,8 +76,11 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
+build_triplet = @build@
+host_triplet = @host@
 subdir = doc
-DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am README
+DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
+	$(dist_doc_DATA) README
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -133,7 +136,7 @@ am__uninstall_files_from_dir = { \
          $(am__cd) "$$dir" && rm -f $$files; }; \
   }
 am__installdirs = "$(DESTDIR)$(docdir)"
-DATA = $(doc_DATA)
+DATA = $(dist_doc_DATA)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
@@ -177,6 +180,8 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+PRTDIAG = @PRTDIAG@
+SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
@@ -192,14 +197,22 @@ am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
 bindir = @bindir@
+build = @build@
 build_alias = @build_alias@
+build_cpu = @build_cpu@
+build_os = @build_os@
+build_vendor = @build_vendor@
 builddir = @builddir@
 datadir = @datadir@
 datarootdir = @datarootdir@
 docdir = $(datadir)/doc/@PACKAGE@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+host = @host@
 host_alias = @host_alias@
+host_cpu = @host_cpu@
+host_os = @host_os@
+host_vendor = @host_vendor@
 htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
@@ -223,7 +236,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-doc_DATA = README
+dist_doc_DATA = README LICENSE
 all: all-am
 
 .SUFFIXES:
@@ -257,9 +270,9 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
-install-docDATA: $(doc_DATA)
+install-dist_docDATA: $(dist_doc_DATA)
 	@$(NORMAL_INSTALL)
-	@list='$(doc_DATA)'; test -n "$(docdir)" || list=; \
+	@list='$(dist_doc_DATA)'; test -n "$(docdir)" || list=; \
 	if test -n "$$list"; then \
 	  echo " $(MKDIR_P) '$(DESTDIR)$(docdir)'"; \
 	  $(MKDIR_P) "$(DESTDIR)$(docdir)" || exit 1; \
@@ -273,9 +286,9 @@ install-docDATA: $(doc_DATA)
 	  $(INSTALL_DATA) $$files "$(DESTDIR)$(docdir)" || exit $$?; \
 	done
 
-uninstall-docDATA:
+uninstall-dist_docDATA:
 	@$(NORMAL_UNINSTALL)
-	@list='$(doc_DATA)'; test -n "$(docdir)" || list=; \
+	@list='$(dist_doc_DATA)'; test -n "$(docdir)" || list=; \
 	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
 	dir='$(DESTDIR)$(docdir)'; $(am__uninstall_files_from_dir)
 tags TAGS:
@@ -372,7 +385,7 @@ info: info-am
 
 info-am:
 
-install-data-am: install-docDATA
+install-data-am: install-dist_docDATA
 
 install-dvi: install-dvi-am
 
@@ -416,21 +429,21 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-docDATA
+uninstall-am: uninstall-dist_docDATA
 
 .MAKE: install-am install-strip
 
 .PHONY: all all-am check check-am clean clean-generic cscopelist-am \
 	ctags-am distclean distclean-generic distdir dvi dvi-am html \
 	html-am info info-am install install-am install-data \
-	install-data-am install-docDATA install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-generic pdf \
-	pdf-am ps ps-am tags-am uninstall uninstall-am \
-	uninstall-docDATA
+	install-data-am install-dist_docDATA install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-generic pdf pdf-am ps ps-am tags-am uninstall \
+	uninstall-am uninstall-dist_docDATA
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

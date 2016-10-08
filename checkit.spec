@@ -1,10 +1,12 @@
 Summary: A file integrity checksum tool
 Name: checkit
-Version: 0.3.2
+Version: 0.3.3
 Release: 1
 License: GPL
 Group: System
-Source: http://dennisk.customer.netspace.net.au/checkit/checkit-0.3.2.tar.gz
+Source: checkit-0.3.3.tar.gz
+Source0: http://dennisk.customer.netspace.net.au/checkit/checkit-0.3.3.tar.gz
+
 URL: http://dennisk.customer.netspace.net.au/checkit.html
 Distribution: Fedora
 Vendor: DK Soft
@@ -25,19 +27,19 @@ undetected error.
 %setup
 
 %build
-%_configure --prefix=/usr
+%_configure --prefix=/usr CFLAGS="-DNDEBUG -O3" --without-gcc-arch
 make
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make install DESTDIR=$RPM_BUILD_ROOT
+make install-strip DESTDIR=$RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,-)
-%doc README
+%{_docdir}/*
 %{_bindir}/*
 %{_mandir}/man1/*
-/usr/share/doc/checkit/README
+#/usr/share/doc/checkit/README
 
 %clean
 rm -rf $RPM_BUILD_ROOT

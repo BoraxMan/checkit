@@ -1,5 +1,5 @@
-CHECKIT 0.3.2
-=============
+CHECKIT
+=======
 
 Checkit is a file integrity tool for Linux and Unix systems.
 
@@ -147,9 +147,7 @@ TODO:
 -----
 
 * Intergration with file managers.
-* -o Overwite option will be removed.
 
 CRC64 routine.
 
-The checksum routine is the crc-64-jones routine created by
-Salvatore Sanfilippo.
+The checksum routine is the crc-64-jones created by Salvatore Sanfilippo.

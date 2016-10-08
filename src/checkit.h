@@ -16,8 +16,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
+
 #define RESET_TEXT()	printf("\033[0;0m")
-#define VERSION "0.3.2"
+#define Version VERSION
 
 enum validities
 {

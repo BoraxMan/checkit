@@ -75,7 +75,7 @@ char* hiddenCRCFile(const char *file)
   sprintf(crc_file, "%s//.%s.crc64", dir_filename, base_filename);
 
   free(_filename); /* It seems basename() and dirname() refer to this string,
-		    * so we cannot free it until we are done with the strings
+// 		    * so we cannot free it until we are done with the strings
 		    * it provides. */
   return(crc_file);
 }
@@ -88,7 +88,7 @@ static int fileExists(const char* file) {
 int presentCRC64(const char *file)
 {  /* Check if CRC64 attribute is present. Returns XATTR if xattr, HIDDEN if hidden file. */
   char buf[LIST_XATTR_BUFFER_SIZE];
-  char *current_attr;
+  char *current_attr = NULL;
   int x;
 
   x = listxattr(file,buf,LIST_XATTR_BUFFER_SIZE);
