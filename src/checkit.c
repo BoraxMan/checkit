@@ -227,6 +227,14 @@ int putCRC(const char *file, int flags)
       
   ATTRFLAGS = (flags & OVERWRITE) ? 0 : XATTR_CREATE;
   
+  if (OVERWRITE)
+  {
+    if (presentCRC64(file) != 0)
+    {
+      return ERROR_NO_OVERWRITE;
+    }
+  }
+  
   oldCRC = getCRC(file);
   checksum_file = FileCRC64(file);
   if ((checksum_file != oldCRC) && (oldCRC != 0) && (checksum_file != 0))
