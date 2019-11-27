@@ -34,6 +34,7 @@
 
 extern int failed;
 extern int processed;
+extern int nocrc;
 
 static int processFile(char *filename, int flags);
 static int processDir(char *path, char *dir, int flags);
@@ -259,12 +260,20 @@ int processFile(char *filename, int flags)
 	printf("  OK  ");
 	RESET_TEXT();
       }
+      else if (resultCRC.status == ERROR_NO_XATTR)
+      {
+	printf("%s%-20s\t[", directory, base_filename);
+        textcolor(BRIGHT,YELLOW,BLACK);
+        printf("NO CRC");
+        ++nocrc;
+        RESET_TEXT();
+      }
       else
       {
 	printf("%s%-20s\t[", directory, base_filename);
 	textcolor(RESET,RED,BLACK);
 	printf(" FAILED ");
-	failed++;
+	++failed;
 	RESET_TEXT();
       }
 
@@ -498,12 +507,16 @@ int main(int argc, char *argv[])
     }
     while ( ++optch < argc);
   }  
-  else
+  else if (!(flags & PIPEDFILES))
   {
     puts("No files specified.");
     return 0;
   }
-  printf("%d file(s) processed.\n", processed);
+  printf("Total of %d file(s) processed.\n", processed);
+  if (nocrc && processed)
+  {
+    printf("%d file(s) without a checksum.\n", nocrc);
+  }
   if (failed && processed)
     {
     printf("%d file(s) failed.\n", failed);

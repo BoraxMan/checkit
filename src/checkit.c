@@ -38,6 +38,7 @@
 const int MAX_BUF_LEN  = 65536;
 int processed = 0;
 int failed = 0;
+int nocrc = 0;
 
 const char* attributeName = "user.crc64";
 
