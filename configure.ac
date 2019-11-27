@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([checkit], [0.3.4], [dennisk@netspace.net.au])
+AC_INIT([checkit], [0.3.5], [dennisk@netspace.net.au])
 AM_INIT_AUTOMAKE()
 AC_OUTPUT(Makefile src/Makefile doc/Makefile man/Makefile)
 AC_CONFIG_SRCDIR([src/checkit.c])
