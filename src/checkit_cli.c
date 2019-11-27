@@ -146,7 +146,7 @@ int processFile(char *filename, int flags)
 	  printErrorMessage(result.status, filename);
 	  return -1;
 	}
-	printf("Checksum for %s: %llx\n", filename, getCRC(filename));
+	printf("Checksum for %s: %llx\n", filename, result.crc64);
 	checkitAttributes = getCheckitOptions(filename);
 	if (checkitAttributes == UPDATEABLE)
 	  printf("R/W Checksum: Checkit can update this checksum.\n");

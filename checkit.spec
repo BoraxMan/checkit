@@ -5,12 +5,13 @@ Release: 1
 License: GPL
 Group: System
 Source: checkit-0.3.4.tar.gz
-Source0: http://dennisk.customer.netspace.net.au/checkit/checkit-0.3.4.tar.gz
+#Source0: http://dennisk.customer.netspace.net.au/checkit/checkit-0.3.4.tar.gz
 
 URL: http://dennisk.customer.netspace.net.au/checkit.html
 Distribution: Fedora
 Vendor: DK Soft
 Packager: Dennis Katsonis <dennisk@netspace.net.au>
+%global debug_package %{nil}
 
 %description
 Checksum adds additions data assurance
