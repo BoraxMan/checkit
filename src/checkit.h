@@ -17,9 +17,12 @@
 */
 
 #include "config.h"
+#include "crc64.h"
 
 #define RESET_TEXT()	printf("\033[0;0m")
 #define Version VERSION
+
+typedef unsigned long long t_crc64;
 
 enum validities
 {
@@ -29,6 +32,7 @@ enum validities
 
 enum errorTypes
 {
+    SUCCESS,
     ERROR_CRC_CALC,
     ERROR_REMOVE_XATTR,
     ERROR_STORE_CRC,
@@ -84,6 +88,7 @@ enum flags
 
 enum extendedAttributeTypes
 {
+  NO_ATTR = 0,
   XATTR = 1,
   HIDDEN_ATTR = 2
 };
@@ -95,6 +100,11 @@ enum checkitOptionsEnum
   OPT_ERROR	= 0x04
 };
 
+typedef struct {
+  int status;
+  t_crc64 crc64;
+} fileCRC;
+
 
 enum fsTypes {
 VFAT = 1,
@@ -104,24 +114,24 @@ XFS = 4,
 JFS = 5,
 NFS = 6,
 SMB = 7,
-CIFS = 8
+CIFS = 8,
+BTRFS = 9
 };
 
 static const int LIST_XATTR_BUFFER_SIZE =  2048; /* Statically allocated buffer. */
 
-typedef unsigned long long t_crc64;
 
 char* hiddenCRCFile(const char *file);
-t_crc64 FileCRC64(const char *filename);
+fileCRC FileCRC64(const char *filename);
 uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l);
 void textcolor(int attr, int fg, int bg);
-t_crc64 getCRC(const char *filename);
+fileCRC getCRC(const char *filename);
 int presentCRC64(const char *file);
 int exportCRC(const char *filename, int flags);
 int removeCRC(const char *filename);
 int importCRC(const char *filename, int flags);
 int putCRC(const char *file, int flags);
-t_crc64 getCRC(const char *file);
+
 int vfat_attr(char *file);
 int ntfs_attr(char *file);
 const char* errorMessage(int error);

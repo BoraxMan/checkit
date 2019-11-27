@@ -80,8 +80,9 @@ int processFile(char *filename, int flags)
 {
   struct stat statbuf;
   int file;
-  t_crc64 result;
-  t_crc64 resultCRC;
+  fileCRC result;
+  fileCRC resultCRC;
+  int dirResult;
   static char directory[PATH_MAX - 1];
 
   char *base_filename;
@@ -91,6 +92,11 @@ int processFile(char *filename, int flags)
  
   /* Seperate filename into directory and filename parts. */
   _filename = strdup(filename);
+  if (_filename == NULL)
+  {
+    perror("Could not allocate memory :");
+    exit(1);
+  }
   base_filename = basename(_filename);
   dir_filename = dirname(_filename);
 
@@ -98,19 +104,24 @@ int processFile(char *filename, int flags)
   if ((file = stat (filename, &statbuf)) != 0 )
   {
     printErrorMessage(ERROR_OPEN_FILE, filename);
+    free(_filename);
     return ERROR_OPEN_FILE;
   }
   
   if (S_ISDIR(statbuf.st_mode) && (flags & RECURSE))
   {
-    result = processDir(directory, filename, flags);
-    if (result)
+    dirResult = processDir(directory, filename, flags);
+    if (dirResult)
     {
-      printErrorMessage(result, filename);
-      return result;
+      printErrorMessage(dirResult, filename);
+      free(_filename);
+      return dirResult;
     }
     else
+    {
+      free(_filename); 
       return 0;
+    }
   }
   
   if (base_filename[0] == '.')
@@ -119,21 +130,10 @@ int processFile(char *filename, int flags)
   if (strcmp(dir_filename, ".") != 0)
     sprintf(directory, "%s/", dir_filename);
 
-  
+
   checkitAttributes = getCheckitOptions(filename);
-  
-  if (flags & STORE)
-  {
-    if (!(flags & OVERWRITE) && (checkitAttributes != UPDATEABLE))
-    {
-      result = presentCRC64(filename);
-      if(result)
-      {
-	printErrorMessage(ERROR_NO_OVERWRITE, filename);
-	return ERROR_NO_OVERWRITE;
-      }
-    }
-  } /* We've checked there isn't a CRC we can overwrite and we are allowed to.  Lets continue. */
+
+
 
   if (S_ISREG (statbuf.st_mode))
   {
@@ -141,9 +141,9 @@ int processFile(char *filename, int flags)
     if (flags & DISPLAY) /* Display CRC64 */
       {
 	result = getCRC(filename);
-	if(!result)
+	if(result.status != SUCCESS)
 	{ /* getCRC returns 0 on error, so if 0, print error messsage and exit. */
-	  printErrorMessage(result, filename);
+	  printErrorMessage(result.status, filename);
 	  return -1;
 	}
 	printf("Checksum for %s: %llx\n", filename, getCRC(filename));
@@ -161,7 +161,8 @@ int processFile(char *filename, int flags)
 	printf("Setting CRC for %s to remain static/read only.\n", filename);
       if (setCheckitOptions(filename, STATIC))
       {
-	printErrorMessage(result,filename);
+	printErrorMessage(dirResult,filename);
+        free(_filename);
 	return -1;
       }
     } /* End of set CRC option routine */
@@ -173,7 +174,8 @@ int processFile(char *filename, int flags)
 
       if (setCheckitOptions(filename, UPDATEABLE))
       {
-	printErrorMessage(result,filename);
+	printErrorMessage(dirResult,filename);
+        free(_filename);
 	return -1;
       }
     } /* End of set CRC option routine */
@@ -183,21 +185,23 @@ int processFile(char *filename, int flags)
     {
       if (flags & VERBOSE)
 	printf("Exporting attribute for %s to %s\n", filename, hiddenCRCFile(basename(filename)));
-      result = exportCRC(filename, flags);
-      if (result)
+      dirResult = exportCRC(filename, flags);
+      if (dirResult)
       { 
-	printErrorMessage(result, filename);
-	return result;
+	printErrorMessage(dirResult, filename);
+        free(_filename);
+	return dirResult;
       }
     } /* End of export routine. */
 
     if (flags & IMPORT) /* Export CRC to file */
     {
-      result = importCRC(filename, flags);
-      if (result)
+      dirResult = importCRC(filename, flags);
+      if (dirResult)
       {
-	printErrorMessage(result, filename);
-	return result;
+	printErrorMessage(dirResult, filename);
+        free(_filename);
+	return dirResult;
       }
       
     } /* End of export routine. */
@@ -206,31 +210,49 @@ int processFile(char *filename, int flags)
     if (flags & STORE) /* Calculate and store CRC64 */
     {
       printf("Storing checksum for file %s\n", filename);
-      result = putCRC(filename, OVERWRITE);
-      if (result)
+      
+    if (checkitAttributes == STATIC)
+    {      
+        /* If checkit attributes say its not updateable
+         * bail out...  Even if there is no CRC64 stored.*/
+	printErrorMessage(ERROR_NO_OVERWRITE, filename);
+	return ERROR_NO_OVERWRITE;
+    } 
+    else if (checkitAttributes == UPDATEABLE)
+    { /* Always overwrite, if explicitely indicated as R/W in the attributes.*/
+      flags |= OVERWRITE;
+    }
+
+      
+      dirResult = putCRC(filename, flags);
+
+      if (dirResult != SUCCESS)
       {
-	printErrorMessage(result, filename);
-	return result;
+	printErrorMessage(dirResult, filename);
+        free(_filename);
+	return dirResult;
       }
     } /* End of store routine. */
     
     if (flags & CHECK) /* Check CRC */
     {
       result = FileCRC64(filename);
-      if(!result)
+      if(result.status != SUCCESS)
       { /* FileCRC64 returns 0 on error, so if 0, print error message (couldn't calculate CRC) and exit. */
 	printErrorMessage(ERROR_CRC_CALC, filename);
+        free(_filename);
 	return -1;
       }
       
       resultCRC = getCRC(filename);
-      if(!resultCRC)
+      if(result.status != SUCCESS)
       { /* getCRC returns 0 on error, so if 0, print error messsage (couldn't read file) and exit. */
 	printErrorMessage(ERROR_READ_FILE, filename);
+        free(_filename);
 	return -1;
       }
       
-      if (result == resultCRC)
+      if (result.crc64 == resultCRC.crc64)
       {
 	printf("%s%-20s\t[", directory, base_filename);
 	textcolor(BRIGHT,GREEN,BLACK);
@@ -254,13 +276,14 @@ int processFile(char *filename, int flags)
       if (flags & VERBOSE)
 	puts("Removing checksum.");
       
-      result = removeCRC(filename);
-      result |= removeCheckitOptions(filename);
+      dirResult = removeCRC(filename);
+      dirResult |= removeCheckitOptions(filename);
       
-      if (result)
+      if (dirResult)
       {
-	printErrorMessage(result, filename);
-	return result;
+	printErrorMessage(dirResult, filename);
+        free(_filename);
+	return dirResult;
       }
     } /* End of Remove CRC routine */
 
@@ -268,7 +291,7 @@ int processFile(char *filename, int flags)
   } /* End of file processing regime */
   free(_filename);
   ++processed;
-  return 0;
+  return SUCCESS;
 }
 
 

@@ -49,7 +49,7 @@ int setCheckitOptions(const char *file, char checkitOptions)
   {
     return ERROR_SET_CRC;
   }
-  return 0;
+  return SUCCESS;
 }
 
 char getCheckitOptions(const char *file)
@@ -126,6 +126,6 @@ int removeCheckitOptions(const char *file)
     } while ((current_attr - buf) < x);
     
   }
-  return 0;
+  return SUCCESS;
 }
 
