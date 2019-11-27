@@ -237,23 +237,29 @@ int processFile(char *filename, int flags)
     
     if (flags & CHECK) /* Check CRC */
     {
-      result = FileCRC64(filename);
-      if(result.status != SUCCESS)
-      { /* FileCRC64 returns 0 on error, so if 0, print error message (couldn't calculate CRC) and exit. */
-	printErrorMessage(ERROR_CRC_CALC, filename);
-        free(_filename);
-	return -1;
-      }
       
+     
       resultCRC = getCRC(filename);
-      if(result.status != SUCCESS)
-      { /* getCRC returns 0 on error, so if 0, print error messsage (couldn't read file) and exit. */
-	printErrorMessage(ERROR_READ_FILE, filename);
-        free(_filename);
-	return -1;
-      }
       
-      if (result.crc64 == resultCRC.crc64)
+      if (resultCRC.status != ERROR_NO_XATTR) 
+      { /* An error reading the CRC, if there was one */
+        if(resultCRC.status != SUCCESS)
+        { /* getCRC returns 0 on error, so if 0, print error messsage (couldn't read file) and exit. */
+          printErrorMessage(ERROR_READ_FILE, filename);
+          free(_filename);
+          return -1;
+        }
+        result = FileCRC64(filename);
+        if(result.status != SUCCESS)
+        { /* FileCRC64 returns 0 on error, so if 0, print error message (couldn't calculate CRC) and exit. */
+          printErrorMessage(ERROR_CRC_CALC, filename);
+          free(_filename);
+          return -1;
+        }
+      }   
+      /* If no CRC, that is OK, We will just skip the check against the file.*/
+  
+      if ((result.crc64 == resultCRC.crc64) && (resultCRC.status != ERROR_NO_XATTR))
       {
 	printf("%s%-20s\t[", directory, base_filename);
 	textcolor(BRIGHT,GREEN,BLACK);
