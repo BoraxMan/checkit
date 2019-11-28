@@ -97,7 +97,8 @@ enum checkitOptionsEnum
 {
   UPDATEABLE	= 0x01,
   STATIC	= 0x02,
-  OPT_ERROR	= 0x04
+  OPT_ERROR	= 0x04,
+  NO_XATTR_SUPPORT = 0x08
 };
 
 typedef struct {

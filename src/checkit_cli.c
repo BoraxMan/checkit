@@ -212,19 +212,18 @@ int processFile(char *filename, int flags)
     {
       printf("Storing checksum for file %s\n", filename);
       
-    if (checkitAttributes == STATIC)
-    {      
+      if (checkitAttributes == STATIC)
+      {      
         /* If checkit attributes say its not updateable
          * bail out...  Even if there is no CRC64 stored.*/
-	printErrorMessage(ERROR_NO_OVERWRITE, filename);
-	return ERROR_NO_OVERWRITE;
-    } 
-    else if (checkitAttributes == UPDATEABLE)
-    { /* Always overwrite, if explicitely indicated as R/W in the attributes.*/
-      flags |= OVERWRITE;
-    }
-
-      
+          printErrorMessage(ERROR_NO_OVERWRITE, filename);
+          return ERROR_NO_OVERWRITE;
+      } 
+      else if (checkitAttributes == UPDATEABLE)
+      { /* Always overwrite, if explicitely indicated as R/W in the attributes.*/
+        flags |= OVERWRITE;
+      }
+    
       dirResult = putCRC(filename, flags);
 
       if (dirResult != SUCCESS)

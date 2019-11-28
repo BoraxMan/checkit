@@ -87,7 +87,7 @@ char getCheckitOptions(const char *file)
   }
   else
   {
-    checkitOptions = STATIC; /* If its VFAT/UDF, don't update.  We don't support the option for these filesystems, yet...*/
+    checkitOptions = NO_XATTR_SUPPORT; /* If its VFAT/UDF, don't update.  We don't support the option for these filesystems, yet...*/
   }
   return checkitOptions; 
 }

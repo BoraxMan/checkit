@@ -31,7 +31,6 @@
 #include <errno.h>
 #include <libgen.h>
 
-
 #include "checkit.h"
 #include "fsmagic.h"
 
@@ -76,7 +75,7 @@ char* hiddenCRCFile(const char *file)
   sprintf(crc_file, "%s//.%s.crc64", dir_filename, base_filename);
 
   free(_filename); /* It seems basename() and dirname() refer to this string,
-// 		    * so we cannot free it until we are done with the strings
+		    * so we cannot free it until we are done with the strings
 		    * it provides. */
   return(crc_file);
 }
@@ -146,7 +145,6 @@ int exportCRC(const char *filename, int flags)
   if ((removexattr(filename, attributeName)) == -1)
     return ERROR_REMOVE_XATTR;
   
-  //++processed;
   return SUCCESS;
 }
   
@@ -161,7 +159,6 @@ int removeCRC(const char *filename)
     if ((unlink(hiddenCRCFile(filename)) == -1) && VERBOSE)
       return ERROR_REMOVE_HIDDEN;
 
-  //++processed;
   return SUCCESS;
 }
 
@@ -179,14 +176,12 @@ int importCRC(const char *filename, int flags)
   if ((file_handle = open(hiddenCRCFile(filename), O_RDONLY)) == -1)
     return ERROR_OPEN_FILE;
   
-  /*crc64 = getCRC(filename);*/
   read(file_handle, &crc64, sizeof (t_crc64));
   close(file_handle);
   if ((setxattr(filename, attributeName, (const char *)&crc64, sizeof(crc64), ATTRFLAGS)) == -1)
     return ERROR_SET_CRC;
 
   unlink(hiddenCRCFile(filename));
-  //++processed;
 
   return SUCCESS;
 }
@@ -203,7 +198,7 @@ fileCRC FileCRC64(const char *filename)
   
   if ((fd = open(filename,O_RDONLY)) == -1)
   {
-    crcResult.status = ERROR_CRC_CALC;/* ERROR_CRC_CALC is defined as being 0. */
+    crcResult.status = ERROR_CRC_CALC;
     return crcResult; 
   }
   
@@ -213,7 +208,7 @@ fileCRC FileCRC64(const char *filename)
       if (bufread == -1)
       {
 	close(fd);
-        crcResult.status = ERROR_CRC_CALC;/* ERROR_CRC_CALC is defined as being 0. */
+        crcResult.status = ERROR_CRC_CALC;
         return crcResult; 
       }
     temp =  (t_crc64) crc64(temp, buf, (unsigned int)bufread);
@@ -225,7 +220,7 @@ fileCRC FileCRC64(const char *filename)
   close(fd);
   crcResult.status = SUCCESS;
   crcResult.crc64 = temp;
-  
+ 
   return crcResult;
 }
 
@@ -255,33 +250,33 @@ int putCRC(const char *file, int flags)
     }
   
   checksum_file = FileCRC64(file);
+
   if (checksum_file.status != SUCCESS)
   {
     return checksum_file.status;
   }
 
-  if (checksum_file.crc64 != oldCRC.crc64)
+  if ((checksum_file.crc64 != oldCRC.crc64) && (oldCRC.status == SUCCESS))
   {
-    printf("File %s has been changed!\n", file);
+    /* If we have a valid checksum for the file already, notify if the new checksum is different. */
+    printf("File %s has been changed since checksum last computed!\n", file);
   }
   
   if(fstype != VFAT && fstype != UDF && fstype != NFS)
   { /* If not VFAT or UDF or NFS, attempt to store CRC in extended attribute */
     if ((setxattr(file, attributeName, (const char *)&checksum_file.crc64, sizeof(checksum_file.crc64), ATTRFLAGS)) == -1)
     {
-      printf("FAIL!\n");
       return ERROR_SET_CRC;
     }
     else
     {
-/* ++processed; */ 
       return SUCCESS; /* And we're done here, return to process next file */
     }
   } 
 
   if ((file_handle = open(hiddenCRCFile(file), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR)) == -1)
     return ERROR_OPEN_FILE;
-  if (write(file_handle, &checksum_file, sizeof (t_crc64)) == -1)
+  if (write(file_handle, &checksum_file.crc64, sizeof (t_crc64)) == -1)
     return ERROR_WRITE_FILE;
 
   close(file_handle);
@@ -290,7 +285,6 @@ int putCRC(const char *file, int flags)
   else if (fstype == NTFS) /* or NTFS */
     ntfs_attr(hiddenCRCFile(file));
 
-  //++processed;
   return SUCCESS;
 }
 
@@ -318,10 +312,8 @@ fileCRC getCRC(const char *file)
       crcResult.status = ERROR_CRC_CALC;
       return crcResult;
     }
-    
     else
     {
-    /* ++processed; */
       crcResult.status = SUCCESS;
       crcResult.crc64 = checksum_attr;
       return crcResult;
@@ -334,16 +326,19 @@ fileCRC getCRC(const char *file)
       crcResult.status = ERROR_CRC_CALC;
       return crcResult;
     }
-    read(file_handle, &checksum_attr, sizeof(t_crc64));
+    if (read(file_handle, &checksum_attr, sizeof(t_crc64)) == -1)
     {
-    /* ++processed; */
-      crcResult.status = SUCCESS;
-      crcResult.crc64 = checksum_attr;
+      perror("Failure reading hidden checksum file.");
+      crcResult.status = ERROR_READ_FILE;
+      crcResult.crc64 = 0;
       return crcResult;
     }
-  }
-    crcResult.status = ERROR_CRC_CALC;
+    crcResult.status = SUCCESS;
+    crcResult.crc64 = checksum_attr;
     return crcResult;
+  }
+  crcResult.status = ERROR_CRC_CALC;
+  return crcResult;
 }
 
 int getfsType(const char *file)
