@@ -7,6 +7,7 @@ Checkit Copyright (C) 2014 Dennis Katsonis
 
 LICENCE INFO
 ------------
+
 Checkit is free software distributed under the GNU GPL.  See below for
 copyright for CRC64.
 
@@ -70,6 +71,12 @@ Checkit calculates and stores the CRC as an extended attribute
 which supports extended attributes (XFS, JFS, EXT2, EXT3, EXT4, BTRFS,
 ReiserFS among others) to use the extended attribute (recommended).
 
+First, run checkit to store the CRC as an attribute, then at any time,
+you can run checkit to check that the file data still matches the CRC.
+If any of the files don't match, or the CRC is missing, checkit will
+report it.  If you pass the "verbose" option, checkit will summarise
+the files that didn't pass the checksum test at the end of the run.
+
 Checkit allows you to determine whether the checksum is 'read only'
 or 'read write', using the -d and -u options.  A 'read only' checksum
 will not be updated, unless the '-o' overwrite option is used.  This
@@ -130,12 +137,11 @@ As checkit doesn't repair files, you need to ensure that you have backups
 of important data.  Checkit by default stores the CRC in an extended
 attribute.
 
-This attribute won't be transferred when copying to a filesystem which
-doesn't support extended attributes, or archived using an archiver which
-doesn't store them.  Note that some file managers may not copy extended
-attributes by default.	You should export the checksums to a hidden
-file using the -e option beforehand if using an archiver or copying to
-a filesystem which does not support extended attributes.
+If the checksum is stored as an extended attribute, which is the default,
+it will be lost if you transfer the file to a filesystem which does not
+support extended attributes, or the method of copying does not preserve
+them.  If you export the CRC, then the CRC can travel with the file as long
+as you copy the CRC hidden file as well.
 
 Checkit cannot detect changes and recompute the checksum without being run
 manually, because it doesn't run in the background.  While having a 'checkit'

@@ -44,7 +44,8 @@ enum errorTypes
     ERROR_NO_XATTR,
     ERROR_NO_OVERWRITE,
     ERROR_WRITE_FILE,
-    ERROR_FILENAME_OVERFLOW
+    ERROR_FILENAME_OVERFLOW,
+    ERROR_NO_MEM
 };
 
 enum characterAttributes

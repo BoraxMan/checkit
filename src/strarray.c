@@ -28,12 +28,12 @@ int initFileList(fileList *list)
   list->files = malloc(chunkSize);
   if (list->files == NULL)
   {
-    return -1;
+    return ERROR_NO_MEM;
   }
   list->freeSpace = chunkSize;
   list->size = chunkSize;
   list->ptr = list->files;
-  return 0;
+  return SUCCESS;
 }
 
 int appendFileList(fileList *list, const char *basename, const char *filename)
@@ -42,7 +42,7 @@ int appendFileList(fileList *list, const char *basename, const char *filename)
   int strSize = (strlenBasename + strlen(filename) + 1); /* +1 for the "\n" we add to the end. */
 
   if (list->files == NULL)
-    return -1;
+    return ERROR_NO_MEM;
   
   if (list->freeSpace <= (strSize + 4))
   {
@@ -53,7 +53,7 @@ int appendFileList(fileList *list, const char *basename, const char *filename)
     list->files = realloc(list->files, list->size + chunkSize);
     if (list->files == NULL)
     {
-      return -1;
+      return ERROR_NO_MEM;
     }
     
     list->size+=chunkSize;
@@ -73,7 +73,7 @@ int appendFileList(fileList *list, const char *basename, const char *filename)
   list->ptr+=strSize;
   list->freeSpace-= (strSize + strlenBasename - 1);
 
-  return 0;
+  return SUCCESS;
 }
 
 void freeFileList(fileList *list)

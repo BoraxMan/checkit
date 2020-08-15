@@ -273,10 +273,10 @@ int processFile(char *filename, int flags)
         
         if (flags & VERBOSE)
         {
-          if (appendFileList(&noCRCFiles, directory, base_filename) == -1)
+          if (appendFileList(&noCRCFiles, directory, base_filename) == ERROR_NO_MEM)
           {
             puts("Out of memory");
-            exit(1);
+            exit(ERROR_NO_MEM);
           }
         }
       }
@@ -290,10 +290,10 @@ int processFile(char *filename, int flags)
         
         if (flags & VERBOSE)
         {
-          if (appendFileList(&badCRCFiles, directory, base_filename) == -1)
+          if (appendFileList(&badCRCFiles, directory, base_filename) == ERROR_NO_MEM)
           {
             puts("Out of memory");
-            exit(1);
+            exit(ERROR_NO_MEM);
           }
         }
       }
@@ -519,13 +519,13 @@ int main(int argc, char *argv[])
     if (initFileList(&noCRCFiles))
     {
       puts("Failed to allocate memory to start the program.");
-      return 1;
+      exit(ERROR_NO_MEM);
     }
   
       if (initFileList(&badCRCFiles))
     {
       puts("Failed to allocate memory to start the program.");
-      return 1;
+      exit(ERROR_NO_MEM);
     }
   }
   
