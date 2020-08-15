@@ -104,7 +104,6 @@ int processFile(char *filename, int flags)
   }
   base_filename = basename(_filename);
   dir_filename = dirname(_filename);
-
   
   if ((file = stat (filename, &statbuf)) != 0 )
   {
@@ -274,7 +273,14 @@ int processFile(char *filename, int flags)
         ++nocrc;
         RESET_TEXT();
         
-        appendFileList(&noCRCFiles, directory, base_filename);
+        if (flags & VERBOSE)
+        {
+          if (appendFileList(&noCRCFiles, directory, base_filename) == -1)
+          {
+            puts("Out of memory");
+            exit(1);
+          }
+        }
       }
       else
       {
@@ -284,7 +290,14 @@ int processFile(char *filename, int flags)
 	++failed;
 	RESET_TEXT();
         
-        appendFileList(&badCRCFiles, directory, base_filename);
+        if (flags & VERBOSE)
+        {
+          if (appendFileList(&badCRCFiles, directory, base_filename) == -1)
+          {
+            puts("Out of memory");
+            exit(1);
+          }
+        }
       }
 
     printf("]\n");
@@ -358,7 +371,13 @@ int processDir(char *path, char *dir, int flags)
     *dirend = 0;
   dirend = strrchr(path,'/'); /* The '/' at the start of the path. */
   if (dirend != NULL) /* Make it null, to terminate the string here. */
+  {
     *++dirend = 0;
+  } else {
+    path[0] = 0; /* Wasn't found, truncate string to zero. 
+                        It may not be found if the original path did not begin with
+                        a / */
+  }
   closedir(dp);
   /* We remove the '/' twice because there is one at the end of the path, but we want to delete
    * the one prior to the last directory entry in the string.*/
@@ -406,18 +425,21 @@ int main(int argc, char *argv[])
   char *ptr;
   int flags = 0;
   
-  if (initFileList(&noCRCFiles))
+  if (flags & VERBOSE) /* If verbose, we will print faulty files at the end
+                          Otherwise, don't bother.*/
   {
-    puts("Failed to allocate memory to start the program.");
-    return 1;
-  }
+    if (initFileList(&noCRCFiles))
+    {
+      puts("Failed to allocate memory to start the program.");
+      return 1;
+    }
   
-    if (initFileList(&badCRCFiles))
-  {
-    puts("Failed to allocate memory to start the program.");
-    return 1;
+      if (initFileList(&badCRCFiles))
+    {
+      puts("Failed to allocate memory to start the program.");
+      return 1;
+    }
   }
-  
   
   while ((optch = getopt(argc, argv,"hscvVudexirfop")) != -1)
     switch (optch)
@@ -497,7 +519,6 @@ int main(int argc, char *argv[])
       case 'p' :
 	flags |= DISPLAY;
 	break;
-	
       case '?' :
 	printHelp();
 	break;
@@ -538,13 +559,15 @@ int main(int argc, char *argv[])
   printf("Total of %d file(s) processed.\n", processed);
   if (nocrc && processed)
   {
-    printf("%d file(s) without a checksum.\n", nocrc);
-    puts(getFileList(&noCRCFiles));
+    printf("\n**** %d file(s) without a checksum ****\n", nocrc);
+    if (flags & VERBOSE)
+      puts(getFileList(&noCRCFiles));
   }
   if (failed && processed)
     {
-    printf("%d file(s) failed.\n", failed);
-    puts(getFileList(&badCRCFiles));
+    printf("\n**** %d file(s) failed ****\n", failed);
+    if (flags & VERBOSE)
+      puts(getFileList(&badCRCFiles));
     return(failed);
     } /* Return the number of failed checks if any errors. */
   else if (processed && (flags & CHECK))
@@ -552,4 +575,3 @@ int main(int argc, char *argv[])
   
   return 0;
 }
-
