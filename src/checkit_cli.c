@@ -20,7 +20,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
@@ -560,7 +559,7 @@ int main(int argc, char *argv[])
   printf("Total of %d file(s) processed.\n", processed);
   if (nocrc && processed)
   {
-    printf("\n**** %d file(s) without a checksum ****\n", nocrc);
+    printf("\nWARNING: **** %d file(s) without a checksum ****\n", nocrc);
     if (flags & VERBOSE)
     {
       puts(getFileList(&noCRCFiles));
@@ -569,7 +568,7 @@ int main(int argc, char *argv[])
   }
   if (failed && processed)
     {
-    printf("\n**** %d file(s) failed ****\n", failed);
+    printf("\nERROR: **** %d file(s) failed ****\n", failed);
     if (flags & VERBOSE)
     {
       puts(getFileList(&badCRCFiles));

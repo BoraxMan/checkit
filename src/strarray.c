@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "strarray.h"
+#include "checkit.h"
 
 const int chunkSize = 4096;
 
