@@ -103,7 +103,7 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_checkit_OBJECTS = checkit_cli.$(OBJEXT) checkit.$(OBJEXT) \
 	checkit_attr.$(OBJEXT) crc64.$(OBJEXT) vfat_attr.$(OBJEXT) \
-	ntfs_attr.$(OBJEXT)
+	ntfs_attr.$(OBJEXT) strarray.$(OBJEXT)
 checkit_OBJECTS = $(am_checkit_OBJECTS)
 checkit_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -124,7 +124,7 @@ am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/checkit.Po \
 	./$(DEPDIR)/checkit_attr.Po ./$(DEPDIR)/checkit_cli.Po \
 	./$(DEPDIR)/crc64.Po ./$(DEPDIR)/ntfs_attr.Po \
-	./$(DEPDIR)/vfat_attr.Po
+	./$(DEPDIR)/strarray.Po ./$(DEPDIR)/vfat_attr.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -267,7 +267,7 @@ top_srcdir = @top_srcdir@
 #AM_CFLAGS = -Wall -O3 -s
 #AM_LDFLAGS = 
 AM_CFLAGS = '-DDATADIR="$(datadir)"' -I$(srcdir)/../include -I$(srcdir)
-checkit_SOURCES = checkit_cli.c checkit.c checkit_attr.c crc64.c vfat_attr.c ntfs_attr.c
+checkit_SOURCES = checkit_cli.c checkit.c checkit_attr.c crc64.c vfat_attr.c ntfs_attr.c strarray.c
 all: all-am
 
 .SUFFIXES:
@@ -359,6 +359,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/checkit_cli.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/crc64.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntfs_attr.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/strarray.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vfat_attr.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -513,6 +514,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/checkit_cli.Po
 	-rm -f ./$(DEPDIR)/crc64.Po
 	-rm -f ./$(DEPDIR)/ntfs_attr.Po
+	-rm -f ./$(DEPDIR)/strarray.Po
 	-rm -f ./$(DEPDIR)/vfat_attr.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -564,6 +566,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/checkit_cli.Po
 	-rm -f ./$(DEPDIR)/crc64.Po
 	-rm -f ./$(DEPDIR)/ntfs_attr.Po
+	-rm -f ./$(DEPDIR)/strarray.Po
 	-rm -f ./$(DEPDIR)/vfat_attr.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic

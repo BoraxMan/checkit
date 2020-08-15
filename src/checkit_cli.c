@@ -31,6 +31,7 @@
 
 #include "checkit.h"
 #include "checkit_attr.h"
+#include "strarray.h"
 
 extern int failed;
 extern int processed;
@@ -39,6 +40,9 @@ extern int nocrc;
 static int processFile(char *filename, int flags);
 static int processDir(char *path, char *dir, int flags);
 static void printErrorMessage(int result, const char *filename);
+
+fileList noCRCFiles;
+fileList badCRCFiles;
 
 void printErrorMessage(int result, const char *filename)
 {
@@ -131,10 +135,7 @@ int processFile(char *filename, int flags)
   if (strcmp(dir_filename, ".") != 0)
     sprintf(directory, "%s/", dir_filename);
 
-
   checkitAttributes = getCheckitOptions(filename);
-
-
 
   if (S_ISREG (statbuf.st_mode))
   {
@@ -272,6 +273,8 @@ int processFile(char *filename, int flags)
         printf("NO CRC");
         ++nocrc;
         RESET_TEXT();
+        
+        appendFileList(&noCRCFiles, directory, base_filename);
       }
       else
       {
@@ -280,6 +283,8 @@ int processFile(char *filename, int flags)
 	printf(" FAILED ");
 	++failed;
 	RESET_TEXT();
+        
+        appendFileList(&badCRCFiles, directory, base_filename);
       }
 
     printf("]\n");
@@ -401,6 +406,19 @@ int main(int argc, char *argv[])
   char *ptr;
   int flags = 0;
   
+  if (initFileList(&noCRCFiles))
+  {
+    puts("Failed to allocate memory to start the program.");
+    return 1;
+  }
+  
+    if (initFileList(&badCRCFiles))
+  {
+    puts("Failed to allocate memory to start the program.");
+    return 1;
+  }
+  
+  
   while ((optch = getopt(argc, argv,"hscvVudexirfop")) != -1)
     switch (optch)
     {
@@ -521,10 +539,12 @@ int main(int argc, char *argv[])
   if (nocrc && processed)
   {
     printf("%d file(s) without a checksum.\n", nocrc);
+    puts(getFileList(&noCRCFiles));
   }
   if (failed && processed)
     {
     printf("%d file(s) failed.\n", failed);
+    puts(getFileList(&badCRCFiles));
     return(failed);
     } /* Return the number of failed checks if any errors. */
   else if (processed && (flags & CHECK))
