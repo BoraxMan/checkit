@@ -27,3 +27,4 @@ typedef struct {
 int initFileList(fileList *list);
 int appendFileList(fileList *list, const char *basename, const char *filename);
 const char *getFileList(const fileList *list);
+void freeFileList(fileList *list);

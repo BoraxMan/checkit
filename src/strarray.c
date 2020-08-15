@@ -40,6 +40,10 @@ int appendFileList(fileList *list, const char *basename, const char *filename)
 {
   int strlenBasename = strlen(basename);
   int strSize = (strlenBasename + strlen(filename) + 1); /* +1 for the "\n" we add to the end. */
+
+  if (list->files == NULL)
+    return -1;
+  
   if (list->freeSpace <= (strSize + 4))
   {
     
@@ -72,7 +76,20 @@ int appendFileList(fileList *list, const char *basename, const char *filename)
   return 0;
 }
 
+void freeFileList(fileList *list)
+{
+  list->ptr = NULL;
+  list->freeSpace = 0;
+  list->size = 0;
+  if (list->files != NULL)
+    free(list->files);
+  list->files = NULL;
+}
+
 const char *getFileList(const fileList *list)
 {
-  return list->files;
+  if (list->files != NULL)
+    return list->files;
+  else
+    return NULL;
 }

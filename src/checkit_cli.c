@@ -236,8 +236,6 @@ int processFile(char *filename, int flags)
     
     if (flags & CHECK) /* Check CRC */
     {
-      
-     
       resultCRC = getCRC(filename);
       
       if (resultCRC.status != ERROR_NO_XATTR) 
@@ -425,22 +423,7 @@ int main(int argc, char *argv[])
   char *ptr;
   int flags = 0;
   
-  if (flags & VERBOSE) /* If verbose, we will print faulty files at the end
-                          Otherwise, don't bother.*/
-  {
-    if (initFileList(&noCRCFiles))
-    {
-      puts("Failed to allocate memory to start the program.");
-      return 1;
-    }
-  
-      if (initFileList(&badCRCFiles))
-    {
-      puts("Failed to allocate memory to start the program.");
-      return 1;
-    }
-  }
-  
+
   while ((optch = getopt(argc, argv,"hscvVudexirfop")) != -1)
     switch (optch)
     {
@@ -529,6 +512,24 @@ int main(int argc, char *argv[])
     printHelp();
     return(0);
   }
+  
+  if (flags & VERBOSE) /* If verbose, we will print faulty files at the end
+                          Otherwise, don't bother.*/
+  {
+    if (initFileList(&noCRCFiles))
+    {
+      puts("Failed to allocate memory to start the program.");
+      return 1;
+    }
+  
+      if (initFileList(&badCRCFiles))
+    {
+      puts("Failed to allocate memory to start the program.");
+      return 1;
+    }
+  }
+  
+   
   if (flags & PIPEDFILES)
   {
     while ((read = getline(&line, &size, stdin) != -1))
@@ -561,13 +562,19 @@ int main(int argc, char *argv[])
   {
     printf("\n**** %d file(s) without a checksum ****\n", nocrc);
     if (flags & VERBOSE)
+    {
       puts(getFileList(&noCRCFiles));
+      freeFileList(&noCRCFiles);
+    }
   }
   if (failed && processed)
     {
     printf("\n**** %d file(s) failed ****\n", failed);
     if (flags & VERBOSE)
+    {
       puts(getFileList(&badCRCFiles));
+      freeFileList(&noCRCFiles);
+    }
     return(failed);
     } /* Return the number of failed checks if any errors. */
   else if (processed && (flags & CHECK))
